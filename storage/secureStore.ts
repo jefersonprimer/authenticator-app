@@ -22,3 +22,21 @@ export const getAccounts = async (): Promise<Account[]> => {
   const data = await SecureStore.getItemAsync(KEY);
   return data ? JSON.parse(data) : [];
 };
+
+export const exportBackup = async (): Promise<string> => {
+  const accounts = await getAccounts();
+  return JSON.stringify(accounts);
+};
+
+export const importBackup = async (json: string) => {
+  try {
+    const accounts = JSON.parse(json);
+    if (Array.isArray(accounts)) {
+      await saveAccounts(accounts);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+};
