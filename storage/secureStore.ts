@@ -36,7 +36,7 @@ export const importBackup = async (json: string) => {
       return true;
     }
     return false;
-  } catch (e) {
+  } catch {
     return false;
   }
 };

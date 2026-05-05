@@ -1,5 +1,3 @@
-import type { Account } from "@/storage/secureStore";
-
 export const parseOtpUri = (uri: string): { issuer?: string; account?: string; secret: string | null } => {
   const url = new URL(uri);
 

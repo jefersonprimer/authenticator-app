@@ -12,7 +12,7 @@ export default function BackupScreen() {
         message: data,
         title: "Backup do Authenticator",
       });
-    } catch (error) {
+    } catch {
       Alert.alert("Erro", "Não foi possível exportar o backup.");
     }
   };
