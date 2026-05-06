@@ -7,6 +7,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
   Alert,
   TouchableOpacity,
@@ -85,6 +86,9 @@ export default function HomeScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [tokens, setTokens] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState(STEP);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<TextInput>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -137,6 +141,24 @@ export default function HomeScreen() {
 
   const isLowTime = timeLeft <= 10;
   const progress = (timeLeft / STEP) * 100;
+  const filteredAccounts = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) return accounts;
+
+    return accounts.filter((account) => {
+      const issuer = account.issuer?.toLowerCase() ?? "";
+      const accountName = account.account?.toLowerCase() ?? "";
+      return issuer.includes(normalizedQuery) || accountName.includes(normalizedQuery);
+    });
+  }, [accounts, searchQuery]);
+
+  useEffect(() => {
+    if (!isSearching) return;
+    const timer = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [isSearching]);
 
   const openMenu = useCallback((account: Account) => {
     setSelectedAccount(account);
@@ -248,30 +270,71 @@ export default function HomeScreen() {
     </View>
   );
 
+  const SearchEmptyState = () => (
+    <View style={styles.searchEmptyContainer}>
+      <Ionicons name="search-outline" size={52} color="#9ca3af" />
+      <Text style={styles.searchEmptyTitle}>Nenhuma conta encontrada</Text>
+      <Text style={styles.searchEmptySubtitle}>
+        Tente pesquisar por outro nome de conta ou serviço.
+      </Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Authenticator</Text>
+        {isSearching ? (
+          <View style={styles.searchHeaderContainer}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={() => {
+                setIsSearching(false);
+                setSearchQuery("");
+              }}
+            >
+              <Ionicons name="arrow-back" size={24} color="white" />
+            </TouchableOpacity>
+            <TextInput
+              ref={searchInputRef}
+              style={styles.searchInput}
+              placeholder="Pesquisar contas"
+              placeholderTextColor="#d1d5db"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+              selectionColor="#ffffff"
+              returnKeyType="search"
+            />
+          </View>
+        ) : (
+          <>
+            <Text style={styles.title}>Authenticator</Text>
 
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="search-outline" size={24} color="white" />
-          </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => setIsSearching(true)}
+              >
+                <Ionicons name="search-outline" size={24} color="white" />
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => router.push("/scan")}
-          >
-            <Ionicons name="add" size={30} color="white" />
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => router.push("/scan")}
+              >
+                <Ionicons name="add" size={30} color="white" />
+              </TouchableOpacity>
 
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="ellipsis-vertical" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
+              <TouchableOpacity style={styles.headerButton}>
+                <Ionicons name="ellipsis-vertical" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
 
-      {accounts.length > 0 && (
+      {filteredAccounts.length > 0 && (
         <>
           <View style={styles.timerBar}>
             <View
@@ -296,13 +359,13 @@ export default function HomeScreen() {
       )}
 
       <FlatList
-        data={accounts}
+        data={filteredAccounts}
         keyExtractor={(item, index) =>
           `${item.secret}-${item.issuer ?? "issuer"}-${item.account ?? "account"}-${index}`
         }
         contentContainerStyle={[
           styles.list,
-          accounts.length === 0 && { flex: 1 },
+          filteredAccounts.length === 0 && { flex: 1 },
         ]}
         renderItem={({ item }) => (
           <View style={styles.card}>
@@ -349,7 +412,9 @@ export default function HomeScreen() {
             </View>
           </View>
         )}
-        ListEmptyComponent={EmptyState}
+        ListEmptyComponent={
+          isSearching && accounts.length > 0 ? SearchEmptyState : EmptyState
+        }
       />
 
       <Modal
@@ -497,6 +562,20 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "500",
     color: "white",
+  },
+  searchHeaderContainer: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 18,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.45)",
   },
   timerBar: {
     height: 4,
@@ -720,6 +799,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingTop: 40,
+  },
+  searchEmptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 28,
+    gap: 8,
+  },
+  searchEmptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#4b5563",
+    textAlign: "center",
+  },
+  searchEmptySubtitle: {
+    fontSize: 14,
+    color: "#6b7280",
+    textAlign: "center",
   },
   welcomeSection: {
     alignItems: "center",
