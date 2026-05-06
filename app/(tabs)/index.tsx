@@ -88,6 +88,7 @@ export default function HomeScreen() {
   const [timeLeft, setTimeLeft] = useState(STEP);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isHeaderMenuVisible, setIsHeaderMenuVisible] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const router = useRouter();
 
@@ -290,6 +291,7 @@ export default function HomeScreen() {
               onPress={() => {
                 setIsSearching(false);
                 setSearchQuery("");
+                setIsHeaderMenuVisible(false);
               }}
             >
               <Ionicons name="arrow-back" size={24} color="white" />
@@ -314,7 +316,10 @@ export default function HomeScreen() {
             <View style={styles.headerActions}>
               <TouchableOpacity
                 style={styles.headerButton}
-                onPress={() => setIsSearching(true)}
+                onPress={() => {
+                  setIsSearching(true);
+                  setIsHeaderMenuVisible(false);
+                }}
               >
                 <Ionicons name="search-outline" size={24} color="white" />
               </TouchableOpacity>
@@ -326,13 +331,46 @@ export default function HomeScreen() {
                 <Ionicons name="add" size={30} color="white" />
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.headerButton}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => setIsHeaderMenuVisible((prev) => !prev)}
+              >
                 <Ionicons name="ellipsis-vertical" size={24} color="white" />
               </TouchableOpacity>
             </View>
           </>
         )}
       </View>
+      {isHeaderMenuVisible && !isSearching && (
+        <>
+          <Pressable
+            style={styles.headerMenuBackdrop}
+            onPress={() => setIsHeaderMenuVisible(false)}
+          />
+          <View style={styles.headerMenu}>
+            <TouchableOpacity
+              style={styles.headerMenuItem}
+              onPress={() => {
+                setIsHeaderMenuVisible(false);
+                Alert.alert("Configurações", "Tela de configurações em breve.");
+              }}
+            >
+              <Ionicons name="settings-outline" size={18} color="#1f2937" />
+              <Text style={styles.headerMenuText}>Configurações</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerMenuItem}
+              onPress={() => {
+                setIsHeaderMenuVisible(false);
+                Alert.alert("Ajuda", "Central de ajuda em breve.");
+              }}
+            >
+              <Ionicons name="help-circle-outline" size={18} color="#1f2937" />
+              <Text style={styles.headerMenuText}>Ajuda</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
 
       {filteredAccounts.length > 0 && (
         <>
@@ -576,6 +614,37 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.45)",
+  },
+  headerMenuBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 5,
+  },
+  headerMenu: {
+    position: "absolute",
+    top: 98,
+    right: 16,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    minWidth: 170,
+    zIndex: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    elevation: 8,
+    overflow: "hidden",
+  },
+  headerMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  headerMenuText: {
+    fontSize: 15,
+    color: "#1f2937",
+    fontWeight: "500",
   },
   timerBar: {
     height: 4,
