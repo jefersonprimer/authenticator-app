@@ -37,6 +37,7 @@ export default function TabLayout() {
         options={{
           title: "Escanear",
           tabBarIcon: ({ color }) => <Ionicons size={24} name="qr-code" color={color} />,
+          tabBarStyle: { display: "none" },
         }}
       />
       <Tabs.Screen
