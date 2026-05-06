@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 
 const KEY = "accounts";
+const APP_LOCK_ENABLED_KEY = "app_lock_enabled";
 
 export type Account = {
   issuer?: string;
@@ -39,4 +40,16 @@ export const importBackup = async (json: string) => {
   } catch {
     return false;
   }
+};
+
+export const isAppLockEnabled = async (): Promise<boolean> => {
+  const value = await SecureStore.getItemAsync(APP_LOCK_ENABLED_KEY);
+  if (value === null) {
+    return true;
+  }
+  return value === "true";
+};
+
+export const setAppLockEnabled = async (enabled: boolean) => {
+  await SecureStore.setItemAsync(APP_LOCK_ENABLED_KEY, String(enabled));
 };

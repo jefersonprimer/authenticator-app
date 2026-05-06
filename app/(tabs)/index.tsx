@@ -352,7 +352,7 @@ export default function HomeScreen() {
               style={styles.headerMenuItem}
               onPress={() => {
                 setIsHeaderMenuVisible(false);
-                Alert.alert("Configurações", "Tela de configurações em breve.");
+                router.push("/settings");
               }}
             >
               <Ionicons name="settings-outline" size={18} color="#1f2937" />
