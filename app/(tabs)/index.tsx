@@ -1,13 +1,17 @@
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   FlatList,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
   View,
   Alert,
   TouchableOpacity,
+  Modal,
+  Animated,
+  Easing,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
@@ -68,12 +72,90 @@ export default function HomeScreen() {
     );
   };
 
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const sheetTranslateY = useRef(new Animated.Value(300)).current;
+
   const copyToClipboard = async (token: string) => {
     await Clipboard.setStringAsync(token);
   };
 
   const isLowTime = timeLeft <= 10;
   const progress = (timeLeft / STEP) * 100;
+
+  const openMenu = useCallback((account: Account) => {
+    setSelectedAccount(account);
+    setIsMenuVisible(true);
+    Animated.timing(sheetTranslateY, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [sheetTranslateY]);
+
+  const closeMenu = useCallback(() => {
+    Animated.timing(sheetTranslateY, {
+      toValue: 300,
+      duration: 180,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setIsMenuVisible(false);
+      }
+    });
+  }, [sheetTranslateY]);
+
+  const handleMenuOption = (option: string) => {
+    if (!selectedAccount) return;
+
+    switch (option) {
+      case "delete":
+        handleDelete(selectedAccount.secret, selectedAccount.issuer || selectedAccount.account || "Conta");
+        break;
+      // Other options will be implemented later
+      default:
+        Alert.alert("Em breve", `A opção "${option}" será implementada em breve.`);
+        break;
+    }
+    closeMenu();
+  };
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dy) > Math.abs(gestureState.dx) &&
+          gestureState.dy > 4,
+        onPanResponderMove: (_, gestureState) => {
+          const nextY = Math.max(0, gestureState.dy);
+          sheetTranslateY.setValue(nextY);
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          const shouldClose = gestureState.dy > 90 || gestureState.vy > 1.15;
+          if (shouldClose) {
+            closeMenu();
+            return;
+          }
+          Animated.timing(sheetTranslateY, {
+            toValue: 0,
+            duration: 180,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }).start();
+        },
+        onPanResponderTerminate: () => {
+          Animated.timing(sheetTranslateY, {
+            toValue: 0,
+            duration: 180,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }).start();
+        },
+      }),
+    [closeMenu, sheetTranslateY]
+  );
 
   const EmptyState = () => (
     <View style={styles.emptyContainer}>
@@ -179,33 +261,100 @@ export default function HomeScreen() {
                   <Text style={styles.account}>{item.account}</Text>
                 )}
               </View>
-              <Pressable
-                onPress={() =>
-                  handleDelete(
-                    item.secret,
-                    item.issuer || item.account || "Conta",
-                  )
-                }
-                style={styles.deleteButton}
+              <TouchableOpacity
+                onPress={() => openMenu(item)}
+                style={styles.editButton}
               >
-                <Ionicons name="trash-outline" size={20} color="#ff3b30" />
-              </Pressable>
+                <Ionicons name="pencil-outline" size={22} color="#666" />
+              </TouchableOpacity>
             </View>
             <View style={styles.tokenContainer}>
               <Text style={[styles.token, isLowTime && { color: "#ff3b30" }]}>
                 {tokens[item.secret] || "------"}
               </Text>
-              <TouchableOpacity
-                onPress={() => copyToClipboard(tokens[item.secret] || "")}
-                style={styles.copyButton}
-              >
-                <Ionicons name="copy-outline" size={24} color="#0a7ea4" />
-              </TouchableOpacity>
+              <View style={styles.tokenActions}>
+                <TouchableOpacity
+                  onPress={() => copyToClipboard(tokens[item.secret] || "")}
+                  style={styles.actionButton}
+                >
+                  <Ionicons name="copy-outline" size={24} color="#0a7ea4" />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         )}
         ListEmptyComponent={EmptyState}
       />
+
+      <Modal
+        visible={isMenuVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeMenu}
+      >
+        <View style={styles.modalRoot}>
+          <Pressable style={styles.modalOverlay} onPress={closeMenu} />
+          <Animated.View
+            style={[
+              styles.modalContent,
+              { transform: [{ translateY: sheetTranslateY }] },
+            ]}
+            {...panResponder.panHandlers}
+          >
+          <View style={styles.sheetHandle} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Opções da Conta</Text>
+            <Text style={styles.modalSubtitle}>
+              {selectedAccount?.issuer || selectedAccount?.account}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => handleMenuOption("edit")}
+          >
+            <Ionicons name="create-outline" size={24} color="#333" />
+            <Text style={styles.menuText}>Editar código 2FA</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => handleMenuOption("icon")}
+          >
+            <Ionicons name="image-outline" size={24} color="#333" />
+            <Text style={styles.menuText}>Alterar ícone de Serviço</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => handleMenuOption("move")}
+          >
+            <Ionicons name="folder-outline" size={24} color="#333" />
+            <Text style={styles.menuText}>Mover para pasta</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => handleMenuOption("export")}
+          >
+            <Ionicons name="share-outline" size={24} color="#333" />
+            <Text style={styles.menuText}>Exportar Código 2FA</Text>
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={[styles.menuItem, styles.deleteItem]}
+            onPress={() => handleMenuOption("delete")}
+          >
+            <Ionicons name="trash-outline" size={24} color="#ff3b30" />
+            <Text style={[styles.menuText, styles.deleteText]}>
+              Excluir código
+            </Text>
+          </TouchableOpacity>
+          </Animated.View>
+      </View>
+      </Modal>
     </View>
   );
 }
@@ -286,14 +435,13 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 2,
   },
-  deleteButton: {
-    padding: 4,
+  editButton: {
+    padding: 8,
   },
   token: {
     fontSize: 32,
     fontWeight: "700",
     letterSpacing: 4,
-    marginTop: 8,
   },
   tokenContainer: {
     flexDirection: "row",
@@ -301,7 +449,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 8,
   },
-  copyButton: {
+  tokenActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  actionButton: {
     padding: 8,
     backgroundColor: "#fff",
     borderRadius: 8,
@@ -310,6 +462,72 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+  },
+  // Account options modal styles
+  modalRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    maxHeight: "55%",
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 42,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "#d1d5db",
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  modalHeader: {
+    paddingVertical: 20,
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#333",
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    gap: 12,
+  },
+  menuText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: "#f0f0f0",
+    marginVertical: 8,
+  },
+  deleteItem: {
+    marginTop: 8,
+  },
+  deleteText: {
+    color: "#ff3b30",
+    fontWeight: "600",
   },
   // Empty State Styles
   emptyContainer: {
