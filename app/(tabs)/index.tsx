@@ -1,7 +1,16 @@
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View, Alert } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  Alert,
+  TouchableOpacity,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { generateToken } from "@/services/totp";
 import type { Account } from "@/storage/secureStore";
 import { getAccounts, removeAccount } from "@/storage/secureStore";
@@ -55,26 +64,41 @@ export default function HomeScreen() {
             load();
           },
         },
-      ]
+      ],
     );
   };
 
-  const progress = useMemo(() => (timeLeft / STEP) * 100, [timeLeft]);
+  const copyToClipboard = async (token: string) => {
+    await Clipboard.setStringAsync(token);
+  };
+
+  const isLowTime = timeLeft <= 10;
+  const progress = (timeLeft / STEP) * 100;
 
   const EmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.welcomeSection}>
         <Ionicons name="shield-checkmark-outline" size={80} color="#0a7ea4" />
-        <Text style={styles.welcomeTitle}>Vamos adicionar sua primeira conta!</Text>
-        <Pressable style={styles.mainAddButton} onPress={() => router.push("/scan")}>
+        <Text style={styles.welcomeTitle}>
+          Vamos adicionar sua primeira conta!
+        </Text>
+        <Pressable
+          style={styles.mainAddButton}
+          onPress={() => router.push("/scan")}
+        >
           <Text style={styles.mainAddButtonText}>Adicionar conta</Text>
         </Pressable>
       </View>
 
       <View style={styles.recoverySection}>
         <Text style={styles.recoveryTitle}>Já tem um backup?</Text>
-        <Text style={styles.recoverySubtitle}>Entre na sua conta de recuperação</Text>
-        <Pressable style={styles.recoveryLink} onPress={() => router.push("/explore")}>
+        <Text style={styles.recoverySubtitle}>
+          Entre na sua conta de recuperação
+        </Text>
+        <Pressable
+          style={styles.recoveryLink}
+          onPress={() => router.push("/explore")}
+        >
           <Text style={styles.recoveryLinkText}>Iniciar a recuperação</Text>
         </Pressable>
       </View>
@@ -91,36 +115,93 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Authenticator</Text>
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.headerButton}>
+            <Ionicons name="search-outline" size={24} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => router.push("/scan")}
+          >
+            <Ionicons name="add" size={30} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.headerButton}>
+            <Ionicons name="ellipsis-vertical" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {accounts.length > 0 && (
         <>
           <View style={styles.timerBar}>
-            <View style={[styles.timerFill, { width: `${progress}%` }]} />
+            <View
+              style={[
+                styles.timerFill,
+                {
+                  width: `${progress}%`,
+                  backgroundColor: isLowTime ? "#ff3b30" : "#0a7ea4",
+                },
+              ]}
+            />
           </View>
-          <Text style={styles.timerText}>{timeLeft}s</Text>
+          <Text
+            style={[
+              styles.timerText,
+              isLowTime && { color: "#ff3b30", fontWeight: "700" },
+            ]}
+          >
+            {timeLeft}s
+          </Text>
         </>
       )}
 
       <FlatList
         data={accounts}
         keyExtractor={(item) => item.secret}
-        contentContainerStyle={[styles.list, accounts.length === 0 && { flex: 1 }]}
+        contentContainerStyle={[
+          styles.list,
+          accounts.length === 0 && { flex: 1 },
+        ]}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="key-outline" size={24} color="#0a7ea4" />
+              </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.issuer}>{item.issuer || item.account || "Conta"}</Text>
-                {item.issuer && <Text style={styles.account}>{item.account}</Text>}
+                <Text style={styles.issuer}>
+                  {item.issuer || item.account || "Conta"}
+                </Text>
+                {item.issuer && (
+                  <Text style={styles.account}>{item.account}</Text>
+                )}
               </View>
               <Pressable
-                onPress={() => handleDelete(item.secret, item.issuer || item.account || "Conta")}
+                onPress={() =>
+                  handleDelete(
+                    item.secret,
+                    item.issuer || item.account || "Conta",
+                  )
+                }
                 style={styles.deleteButton}
               >
                 <Ionicons name="trash-outline" size={20} color="#ff3b30" />
               </Pressable>
             </View>
-            <Text style={styles.token}>{tokens[item.secret] || "------"}</Text>
+            <View style={styles.tokenContainer}>
+              <Text style={[styles.token, isLowTime && { color: "#ff3b30" }]}>
+                {tokens[item.secret] || "------"}
+              </Text>
+              <TouchableOpacity
+                onPress={() => copyToClipboard(tokens[item.secret] || "")}
+                style={styles.copyButton}
+              >
+                <Ionicons name="copy-outline" size={24} color="#0a7ea4" />
+              </TouchableOpacity>
+            </View>
           </View>
         )}
         ListEmptyComponent={EmptyState}
@@ -138,13 +219,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingHorizontal: 16,
+    paddingTop: 50,
     paddingBottom: 16,
+    backgroundColor: "#0a7ea4",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerButton: {
+    padding: 4,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "500",
+    color: "white",
   },
   timerBar: {
     height: 4,
@@ -177,6 +268,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
   },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#e0f2f1",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
   issuer: {
     fontSize: 18,
     fontWeight: "600",
@@ -194,6 +294,22 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 4,
     marginTop: 8,
+  },
+  tokenContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  copyButton: {
+    padding: 8,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   // Empty State Styles
   emptyContainer: {
