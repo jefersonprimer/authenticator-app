@@ -2,7 +2,7 @@
   "expo": {
     "name": "authenticator",
     "slug": "authenticator",
-    "version": "1.0.0",
+    "version": "2026.5.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "authenticator",
@@ -19,7 +19,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.gabriellprimer.authenticator"
     },
     "web": {
       "output": "static",
@@ -50,6 +55,14 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "buildId": "2026.05.05",
+      "commit": "84a231c",
+      "eas": {
+        "projectId": "51bd190c-db54-4e5a-9c7b-cbd7432b9139"
+      }
     }
   }
 }
