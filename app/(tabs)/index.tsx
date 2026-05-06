@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, type ComponentProps } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   FlatList,
   PanResponder,
@@ -20,6 +21,65 @@ import type { Account } from "@/storage/secureStore";
 import { getAccounts, removeAccount } from "@/storage/secureStore";
 
 const STEP = 30;
+type IoniconName = ComponentProps<typeof Ionicons>["name"];
+
+const SERVICE_ICON_MAP: Record<string, IoniconName> = {
+  google: "logo-google",
+  github: "logo-github",
+  gitlab: "logo-gitlab",
+  microsoft: "logo-microsoft",
+  amazon: "logo-amazon",
+  apple: "logo-apple",
+  facebook: "logo-facebook",
+  twitter: "logo-twitter",
+  twitch: "logo-twitch",
+  discord: "logo-discord",
+  bitbucket: "logo-bitbucket",
+  linkedin: "logo-linkedin",
+  dropbox: "logo-dropbox",
+  yahoo: "mail-outline",
+};
+
+const SERVICE_COLOR_MAP: Record<string, { icon: string; background: string }> = {
+  google: { icon: "#DB4437", background: "#FEEFEA" },
+  github: { icon: "#181717", background: "#ECECEC" },
+  gitlab: { icon: "#FC6D26", background: "#FFF1E8" },
+  microsoft: { icon: "#00A4EF", background: "#EAF6FF" },
+  amazon: { icon: "#FF9900", background: "#FFF4E5" },
+  apple: { icon: "#111111", background: "#F0F0F0" },
+  facebook: { icon: "#1877F2", background: "#EAF2FF" },
+  twitter: { icon: "#1D9BF0", background: "#E8F6FF" },
+  twitch: { icon: "#9146FF", background: "#F3ECFF" },
+  discord: { icon: "#5865F2", background: "#EEF0FF" },
+  bitbucket: { icon: "#0052CC", background: "#EAF1FF" },
+  linkedin: { icon: "#0A66C2", background: "#E9F2FB" },
+  dropbox: { icon: "#0061FF", background: "#E8F1FF" },
+  yahoo: { icon: "#6001D2", background: "#F3ECFF" },
+};
+
+const getServiceName = (account: Account): string | null => {
+  const source = `${account.issuer ?? ""} ${account.account ?? ""}`.toLowerCase();
+
+  for (const serviceName of Object.keys(SERVICE_ICON_MAP)) {
+    if (source.includes(serviceName)) {
+      return serviceName;
+    }
+  }
+
+  return null;
+};
+
+const getServiceIcon = (account: Account): IoniconName => {
+  const service = getServiceName(account);
+  if (!service) return "key-outline";
+  return SERVICE_ICON_MAP[service];
+};
+
+const getServiceColors = (account: Account): { icon: string; background: string } => {
+  const service = getServiceName(account);
+  if (!service) return { icon: "#0a7ea4", background: "#e0f2f1" };
+  return SERVICE_COLOR_MAP[service] ?? { icon: "#0a7ea4", background: "#e0f2f1" };
+};
 
 export default function HomeScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -30,6 +90,12 @@ export default function HomeScreen() {
   useEffect(() => {
     load();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, []),
+  );
 
   useEffect(() => {
     const tick = () => {
@@ -54,26 +120,15 @@ export default function HomeScreen() {
     setAccounts(data);
   };
 
-  const handleDelete = (secret: string, label: string) => {
-    Alert.alert(
-      "Remover Conta",
-      `Tem certeza que deseja remover a conta "${label}"? Você perderá o acesso ao 2FA se não tiver um backup.`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Remover",
-          style: "destructive",
-          onPress: async () => {
-            await removeAccount(secret);
-            load();
-          },
-        },
-      ],
-    );
+  const handleDelete = async (secret: string) => {
+    await removeAccount(secret);
+    setAccountPendingDeletion(null);
+    load();
   };
 
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [accountPendingDeletion, setAccountPendingDeletion] = useState<Account | null>(null);
   const sheetTranslateY = useRef(new Animated.Value(300)).current;
 
   const copyToClipboard = async (token: string) => {
@@ -112,7 +167,7 @@ export default function HomeScreen() {
 
     switch (option) {
       case "delete":
-        handleDelete(selectedAccount.secret, selectedAccount.issuer || selectedAccount.account || "Conta");
+        setAccountPendingDeletion(selectedAccount);
         break;
       // Other options will be implemented later
       default:
@@ -242,7 +297,9 @@ export default function HomeScreen() {
 
       <FlatList
         data={accounts}
-        keyExtractor={(item) => item.secret}
+        keyExtractor={(item, index) =>
+          `${item.secret}-${item.issuer ?? "issuer"}-${item.account ?? "account"}-${index}`
+        }
         contentContainerStyle={[
           styles.list,
           accounts.length === 0 && { flex: 1 },
@@ -250,8 +307,17 @@ export default function HomeScreen() {
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <View style={styles.iconContainer}>
-                <Ionicons name="key-outline" size={24} color="#0a7ea4" />
+              <View
+                style={[
+                  styles.iconContainer,
+                  { backgroundColor: getServiceColors(item).background },
+                ]}
+              >
+                <Ionicons
+                  name={getServiceIcon(item)}
+                  size={24}
+                  color={getServiceColors(item).icon}
+                />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.issuer}>
@@ -354,6 +420,52 @@ export default function HomeScreen() {
           </TouchableOpacity>
           </Animated.View>
       </View>
+      </Modal>
+
+      <Modal
+        visible={!!accountPendingDeletion}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAccountPendingDeletion(null)}
+      >
+        <View style={styles.deleteModalRoot}>
+          <Pressable
+            style={styles.deleteModalOverlay}
+            onPress={() => setAccountPendingDeletion(null)}
+          />
+          <View style={styles.deleteModalCard}>
+            <View style={styles.deleteIconContainer}>
+              <Ionicons name="trash-outline" size={24} color="#ff3b30" />
+            </View>
+            <Text style={styles.deleteModalTitle}>Remover conta?</Text>
+            <Text style={styles.deleteModalSubtitle}>
+              {accountPendingDeletion?.issuer || accountPendingDeletion?.account || "Conta"}
+            </Text>
+            <Text style={styles.deleteModalDescription}>
+              Esta conta de autenticação será removida do dispositivo. Tenha certeza de que você
+              possui um backup antes de continuar.
+            </Text>
+
+            <View style={styles.deleteModalActions}>
+              <TouchableOpacity
+                style={styles.deleteCancelButton}
+                onPress={() => setAccountPendingDeletion(null)}
+              >
+                <Text style={styles.deleteCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteConfirmButton}
+                onPress={() =>
+                  accountPendingDeletion?.secret
+                    ? handleDelete(accountPendingDeletion.secret)
+                    : setAccountPendingDeletion(null)
+                }
+              >
+                <Text style={styles.deleteConfirmText}>Remover</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -528,6 +640,79 @@ const styles = StyleSheet.create({
   deleteText: {
     color: "#ff3b30",
     fontWeight: "600",
+  },
+  deleteModalRoot: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 22,
+  },
+  deleteModalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+  },
+  deleteModalCard: {
+    width: "100%",
+    maxWidth: 390,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+  },
+  deleteIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#ffeceb",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  deleteModalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  deleteModalSubtitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#374151",
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  deleteModalDescription: {
+    fontSize: 14,
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  deleteModalActions: {
+    width: "100%",
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 18,
+  },
+  deleteCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "#f3f4f6",
+    alignItems: "center",
+  },
+  deleteCancelText: {
+    color: "#374151",
+    fontWeight: "600",
+  },
+  deleteConfirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "#ff3b30",
+    alignItems: "center",
+  },
+  deleteConfirmText: {
+    color: "#fff",
+    fontWeight: "700",
   },
   // Empty State Styles
   emptyContainer: {
