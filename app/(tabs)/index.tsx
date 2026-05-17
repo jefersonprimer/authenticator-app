@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState, useCallback, useRef, useMemo, type ComponentProps } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import {
+  ActivityIndicator,
   FlatList,
   PanResponder,
   Pressable,
@@ -84,6 +85,7 @@ const getServiceColors = (account: Account): { icon: string; background: string 
 
 export default function HomeScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
   const [tokens, setTokens] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState(STEP);
   const [isSearching, setIsSearching] = useState(false);
@@ -121,8 +123,13 @@ export default function HomeScreen() {
   }, [accounts]);
 
   const load = async () => {
-    const data = await getAccounts();
-    setAccounts(data);
+    setIsLoadingAccounts(true);
+    try {
+      const data = await getAccounts();
+      setAccounts(data);
+    } finally {
+      setIsLoadingAccounts(false);
+    }
   };
 
   const handleDelete = async (secret: string) => {
@@ -278,6 +285,13 @@ export default function HomeScreen() {
       <Text style={styles.searchEmptySubtitle}>
         Tente pesquisar por outro nome de conta ou serviço.
       </Text>
+    </View>
+  );
+
+  const LoadingState = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#0a7ea4" />
+      <Text style={styles.loadingText}>Carregando contas...</Text>
     </View>
   );
 
@@ -451,7 +465,11 @@ export default function HomeScreen() {
           </View>
         )}
         ListEmptyComponent={
-          isSearching && accounts.length > 0 ? SearchEmptyState : EmptyState
+          isLoadingAccounts
+            ? LoadingState
+            : isSearching && accounts.length > 0
+              ? SearchEmptyState
+              : EmptyState
         }
       />
 
@@ -868,6 +886,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingTop: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#6b7280",
   },
   searchEmptyContainer: {
     flex: 1,
