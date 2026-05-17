@@ -46,8 +46,13 @@ export default function Scan() {
   if (!permission?.granted) {
     return (
       <View style={styles.container}>
-        <Text>Permissão da câmera necessária</Text>
-        <Button title="Permitir" onPress={requestPermission} />
+        <Text style={styles.permissionText}>Permissão da câmera necessária</Text>
+        <View style={styles.permissionActions}>
+          <Button title="Permitir" onPress={requestPermission} />
+          <Pressable onPress={() => router.push("/manual-entry")} style={styles.permissionManualButton}>
+            <Text style={styles.permissionManualText}>Enter code manually</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -111,10 +116,16 @@ export default function Scan() {
           <View style={styles.scanFrame} />
         </View>
 
-        <View style={styles.footerCenter}>
-          <Ionicons color="#fff" name="shield-checkmark-outline" size={16} />
-          <Text style={styles.footerText}>Lido por PrimerLabs em nome de Authenticator</Text>
-          <Ionicons color="#fff" name="alert-circle-outline" size={16} />
+        <View style={styles.bottomSection}>
+          <Pressable onPress={() => router.push("/manual-entry")} style={styles.manualEntryButton}>
+            <Text style={styles.manualEntryText}>Enter code manually</Text>
+          </Pressable>
+
+          <View style={styles.footerCenter}>
+            <Ionicons color="#fff" name="shield-checkmark-outline" size={16} />
+            <Text style={styles.footerText}>Lido por PrimerLabs em nome de Authenticator</Text>
+            <Ionicons color="#fff" name="alert-circle-outline" size={16} />
+          </View>
         </View>
       </SafeAreaView>
 
@@ -167,6 +178,29 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 24,
+    gap: 16,
+    backgroundColor: "#fff",
+  },
+  permissionText: {
+    fontSize: 16,
+    color: "#111827",
+    textAlign: "center",
+  },
+  permissionActions: {
+    width: "100%",
+    alignItems: "center",
+    gap: 12,
+  },
+  permissionManualButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#eef6f9",
+  },
+  permissionManualText: {
+    color: "#0a7ea4",
+    fontWeight: "600",
   },
   camera: {
     flex: 1,
@@ -201,7 +235,6 @@ const styles = StyleSheet.create({
   },
   footerCenter: {
     alignSelf: "center",
-    marginBottom: 16,
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -213,6 +246,27 @@ const styles = StyleSheet.create({
   footerText: {
     color: "#fff",
     fontSize: 12,
+  },
+  bottomSection: {
+    alignItems: "center",
+    gap: 14,
+    paddingBottom: 16,
+  },
+  manualEntryButton: {
+    minWidth: 220,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.24)",
+  },
+  manualEntryText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
   },
   scanArea: {
     alignItems: "center",

@@ -74,6 +74,7 @@ export default function RootLayout() {
         {isUnlocked ? (
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="manual-entry" options={{ headerShown: false }} />
             <Stack.Screen name="settings" options={{ headerShown: false }} />
           </Stack>
         ) : (
