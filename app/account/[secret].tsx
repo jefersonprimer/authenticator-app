@@ -45,7 +45,7 @@ export default function AccountDetailScreen() {
 
   const sheetTranslateY = useRef(new Animated.Value(400)).current;
 
-  const animateSheet = (toValue: number, callback?: () => void) => {
+  const animateSheet = useCallback((toValue: number, callback?: () => void) => {
     Animated.timing(sheetTranslateY, {
       toValue,
       duration: toValue === 0 ? 250 : 200,
@@ -54,7 +54,7 @@ export default function AccountDetailScreen() {
     }).start(({ finished }) => {
       if (finished && callback) callback();
     });
-  };
+  }, [sheetTranslateY]);
 
   const openActions = () => {
     setIsActionsVisible(true);
@@ -76,16 +76,16 @@ export default function AccountDetailScreen() {
       setIsEditVisible(true);
       animateSheet(0);
     });
-  }, [account]);
+  }, [account, animateSheet]);
 
-  const closeEdit = () => {
+  const closeEdit = useCallback(() => {
     animateSheet(400, () => setIsEditVisible(false));
-  };
+  }, [animateSheet]);
 
   const loadAccount = useCallback(async () => {
     if (!secret) return;
     const accounts = await getAccounts();
-    const nextAccount = accounts.find((item) => item.secret === secret) ?? null;
+    const nextAccount = accounts.find((item) => item.id === secret) ?? null;
     setAccount(nextAccount);
   }, [secret]);
 
@@ -107,8 +107,8 @@ export default function AccountDetailScreen() {
 
     const tick = () => {
       const now = Math.floor(Date.now() / 1000);
-      setTimeLeft(STEP - (now % STEP));
-      setToken(generateToken(account.secret));
+      setTimeLeft(account.period - (now % account.period) || account.period);
+      setToken(generateToken(account));
     };
 
     tick();
@@ -123,19 +123,19 @@ export default function AccountDetailScreen() {
   const activeSegments = Math.max(0, Math.min(TIMER_SEGMENTS, timeLeft));
 
   const handleSaveAccount = useCallback(async () => {
-    if (!account?.secret) return;
+    if (!account?.id) return;
 
-    await updateAccount(account.secret, {
+    await updateAccount(account.id, {
       issuer: issuerInput.trim() || undefined,
       account: accountInput.trim() || undefined,
     });
 
     closeEdit();
     await loadAccount();
-  }, [account, accountInput, issuerInput, loadAccount]);
+  }, [account, accountInput, closeEdit, issuerInput, loadAccount]);
 
   const handleRemoveAccount = useCallback(() => {
-    if (!account?.secret) return;
+    if (!account?.id) return;
 
     animateSheet(400, () => {
       setIsActionsVisible(false);
@@ -145,13 +145,13 @@ export default function AccountDetailScreen() {
           text: "Remover",
           style: "destructive",
           onPress: async () => {
-            await removeAccount(account.secret);
+            await removeAccount(account.id);
             router.replace("/");
           },
         },
       ]);
     });
-  }, [account, router]);
+  }, [account, animateSheet, router]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>

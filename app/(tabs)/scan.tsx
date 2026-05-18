@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { Account } from "@/storage/secureStore";
 import { getAccounts, saveAccounts } from "@/storage/secureStore";
 import { parseOtpUri } from "@/utils/parseOtp";
+import { createOtpEntry } from "@/utils/otp";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
@@ -42,7 +43,7 @@ export default function Scan() {
       ...accounts,
       {
         ...pendingAccount,
-        issuer: nextName,
+        account: nextName,
       },
     ]);
     closeDuplicateModal();
@@ -105,16 +106,12 @@ export default function Scan() {
 
           const data = parseOtpUri(result.data);
 
-          if (!data.secret) {
+          if (!data) {
             alert("QR code inválido. Escaneie um QR code de autenticação.");
             return;
           }
 
-          const account: Account = {
-            issuer: data.issuer,
-            account: data.account,
-            secret: data.secret,
-          };
+          const account: Account = createOtpEntry(data);
 
           const accounts = await getAccounts();
           const sameNameExists = accounts.find(
@@ -181,7 +178,7 @@ export default function Scan() {
               style={[styles.modalInput, { color: theme.text, borderColor: theme.cardBorder, backgroundColor: colorScheme === 'dark' ? '#111' : '#f9f9f9' }]}
               value={newAccountName}
               onChangeText={setNewAccountName}
-              placeholder="Alterar o nome da chave (ex: Google)"
+              placeholder="Alterar conta / e-mail (ex: user@email.com)"
               placeholderTextColor="#8A8A8A"
               autoCapitalize="none"
             />

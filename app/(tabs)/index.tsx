@@ -65,7 +65,7 @@ export default function HomeScreen() {
 
       const nextTokens: Record<string, string> = {};
       accounts.forEach((item) => {
-        nextTokens[item.secret] = generateToken(item.secret);
+        nextTokens[item.id] = generateToken(item);
       });
       setTokens(nextTokens);
     };
@@ -85,8 +85,8 @@ export default function HomeScreen() {
     }
   };
 
-  const handleDelete = async (secret: string) => {
-    await removeAccount(secret);
+  const handleDelete = async (accountId: string) => {
+    await removeAccount(accountId);
     setAccountPendingDeletion(null);
     load();
   };
@@ -423,9 +423,7 @@ export default function HomeScreen() {
 
       <FlatList
         data={filteredAccounts}
-        keyExtractor={(item, index) =>
-          `${item.secret}-${item.issuer ?? "issuer"}-${item.account ?? "account"}-${index}`
-        }
+        keyExtractor={(item) => item.id}
         contentContainerStyle={[
           styles.list,
           filteredAccounts.length === 0 && { flex: 1 },
@@ -433,7 +431,7 @@ export default function HomeScreen() {
         renderItem={({ item }) => {
           const displayName = getAccountDisplayName(item);
           const subtitle = getAccountSubtitle(item);
-          const token = tokens[item.secret] || "";
+          const token = tokens[item.id] || "";
           const activeSegments = Math.max(
             0,
             Math.min(MINI_TIMER_SEGMENTS, timeLeft),
@@ -451,7 +449,7 @@ export default function HomeScreen() {
               onPress={() =>
                 router.push({
                   pathname: "/account/[secret]",
-                  params: { secret: item.secret },
+                  params: { secret: item.id },
                 })
               }
             >
@@ -483,7 +481,7 @@ export default function HomeScreen() {
                       event.stopPropagation();
                       router.push({
                         pathname: "/account/[secret]",
-                        params: { secret: item.secret },
+                        params: { secret: item.id },
                       });
                     }}
                     style={styles.chevronButton}

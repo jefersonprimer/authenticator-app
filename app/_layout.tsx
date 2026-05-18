@@ -83,14 +83,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        {isUnlocked ? (
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="account/[secret]" options={{ headerShown: false }} />
-            <Stack.Screen name="manual-entry" options={{ headerShown: false }} />
-            <Stack.Screen name="settings" options={{ headerShown: false }} />
-          </Stack>
-        ) : (
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="account/[secret]" options={{ headerShown: false }} />
+          <Stack.Screen name="manual-entry" options={{ headerShown: false }} />
+          <Stack.Screen name="settings" options={{ headerShown: false }} />
+        </Stack>
+        {!isUnlocked ? (
           <View
             style={[
               styles.lockScreen,
@@ -137,7 +136,7 @@ export default function RootLayout() {
               </Pressable>
             </View>
           </View>
-        )}
+        ) : null}
         <StatusBar style="auto" />
       </ThemeProvider>
     </GestureHandlerRootView>
@@ -146,10 +145,11 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   lockScreen: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+    zIndex: 10,
   },
   lockCard: {
     width: '100%',

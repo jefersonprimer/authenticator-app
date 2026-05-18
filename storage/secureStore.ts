@@ -1,36 +1,36 @@
 import * as SecureStore from "expo-secure-store";
+import { createEncryptedBackup, importBackupFromString } from "@/services/backup";
+import type { OtpEntry } from "@/types/otp";
+import { createOtpEntry, normalizeOtpEntries } from "@/utils/otp";
 
 const KEY = "accounts";
 const APP_LOCK_ENABLED_KEY = "app_lock_enabled";
 
-export type Account = {
-  issuer?: string;
-  account?: string;
-  secret: string;
-};
+export type Account = OtpEntry;
 
 export const saveAccounts = async (accounts: Account[]) => {
-  await SecureStore.setItemAsync(KEY, JSON.stringify(accounts));
+  await SecureStore.setItemAsync(KEY, JSON.stringify(normalizeOtpEntries(accounts)));
 };
 
-export const removeAccount = async (secret: string) => {
+export const removeAccount = async (accountId: string) => {
   const accounts = await getAccounts();
-  const filtered = accounts.filter((acc) => acc.secret !== secret);
+  const filtered = accounts.filter((acc) => acc.id !== accountId);
   await saveAccounts(filtered);
 };
 
 export const updateAccount = async (
-  secret: string,
+  accountId: string,
   updates: Pick<Account, "issuer" | "account">,
 ) => {
   const accounts = await getAccounts();
   const updatedAccounts = accounts.map((item) =>
-    item.secret === secret
-      ? {
+    item.id === accountId
+      ? createOtpEntry({
           ...item,
           issuer: updates.issuer,
           account: updates.account,
-        }
+          updatedAt: Date.now(),
+        })
       : item,
   );
 
@@ -39,26 +39,30 @@ export const updateAccount = async (
 
 export const getAccounts = async (): Promise<Account[]> => {
   const data = await SecureStore.getItemAsync(KEY);
-  return data ? JSON.parse(data) : [];
-};
+  if (!data) {
+    return [];
+  }
 
-export const exportBackup = async (): Promise<string> => {
-  const accounts = await getAccounts();
-  return JSON.stringify(accounts);
-};
-
-export const importBackup = async (json: string) => {
   try {
-    const accounts = JSON.parse(json);
-    if (Array.isArray(accounts)) {
-      await saveAccounts(accounts);
-      return true;
+    const parsed = JSON.parse(data);
+    const normalized = normalizeOtpEntries(parsed);
+
+    if (JSON.stringify(parsed) !== JSON.stringify(normalized)) {
+      await saveAccounts(normalized);
     }
-    return false;
+
+    return normalized;
   } catch {
-    return false;
+    return [];
   }
 };
+
+export const exportBackup = async (password: string): Promise<string> => {
+  const accounts = await getAccounts();
+  return createEncryptedBackup(accounts, password);
+};
+
+export { importBackupFromString };
 
 export const isAppLockEnabled = async (): Promise<boolean> => {
   const value = await SecureStore.getItemAsync(APP_LOCK_ENABLED_KEY);

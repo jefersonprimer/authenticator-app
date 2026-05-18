@@ -14,32 +14,46 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { generateToken } from "@/services/totp";
+import { validateOtpSecret } from "@/services/totp";
 import type { Account } from "@/storage/secureStore";
 import { getAccounts, saveAccounts } from "@/storage/secureStore";
+import { createOtpEntry, normalizeAlgorithm, normalizeDigits, normalizePeriod, normalizeSecret } from "@/utils/otp";
 
 const normalize = (value?: string) => (value ?? "").trim().toLowerCase();
-const normalizeSecret = (value: string) => value.replace(/\s+/g, "").toUpperCase();
 
 export default function ManualEntryScreen() {
   const router = useRouter();
+  const [issuer, setIssuer] = useState("");
   const [accountName, setAccountName] = useState("");
   const [secret, setSecret] = useState("");
+  const [algorithm, setAlgorithm] = useState("SHA1");
+  const [digits, setDigits] = useState("6");
+  const [period, setPeriod] = useState("30");
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSubmit = async () => {
-    const trimmedName = accountName.trim();
     const normalizedSecret = normalizeSecret(secret);
+    const normalizedIssuer = issuer.trim() || undefined;
+    const normalizedAccount = accountName.trim() || undefined;
 
-    if (!trimmedName || !normalizedSecret) {
-      Alert.alert("Campos obrigatórios", "Preencha o nome da conta e a chave secreta.");
+    if (!normalizedSecret || !normalizedAccount) {
+      Alert.alert("Campos obrigatórios", "Preencha a conta/e-mail e a chave secreta.");
       return;
     }
 
+    const account = createOtpEntry({
+      issuer: normalizedIssuer,
+      account: normalizedAccount,
+      secret: normalizedSecret,
+      algorithm: normalizeAlgorithm(algorithm),
+      digits: normalizeDigits(Number(digits)),
+      period: normalizePeriod(Number(period)),
+    });
+
     try {
-      generateToken(normalizedSecret);
+      validateOtpSecret(account);
     } catch {
-      Alert.alert("Chave inválida", "A chave secreta informada não é válida.");
+      Alert.alert("Dados inválidos", "Revise a chave secreta e os parâmetros do token.");
       return;
     }
 
@@ -47,11 +61,6 @@ export default function ManualEntryScreen() {
 
     try {
       const accounts = await getAccounts();
-      const account: Account = {
-        account: trimmedName,
-        secret: normalizedSecret,
-      };
-
       const duplicatedAccount = accounts.some(
         (item) =>
           normalize(item.issuer) === normalize(account.issuer) &&
@@ -59,11 +68,11 @@ export default function ManualEntryScreen() {
       );
 
       if (duplicatedAccount) {
-        Alert.alert("Conta existente", "Já existe uma conta com esse nome.");
+        Alert.alert("Conta existente", "Já existe uma conta com esse mesmo serviço e rótulo.");
         return;
       }
 
-      await saveAccounts([...accounts, account]);
+      await saveAccounts([...accounts, account as Account]);
       router.replace("/");
     } finally {
       setIsSaving(false);
@@ -86,13 +95,23 @@ export default function ManualEntryScreen() {
           </View>
 
           <View style={styles.formCard}>
-            <Text style={styles.label}>Nome da conta</Text>
+            <Text style={styles.label}>Serviço</Text>
+            <TextInput
+              style={styles.input}
+              value={issuer}
+              onChangeText={setIssuer}
+              placeholder="Ex: GitHub"
+              placeholderTextColor="#9ca3af"
+            />
+
+            <Text style={styles.label}>Conta / e-mail</Text>
             <TextInput
               style={styles.input}
               value={accountName}
               onChangeText={setAccountName}
-              placeholder="Ex: Google"
+              placeholder="Ex: user@email.com"
               placeholderTextColor="#9ca3af"
+              autoCapitalize="none"
             />
 
             <Text style={styles.label}>Chave secreta</Text>
@@ -105,6 +124,43 @@ export default function ManualEntryScreen() {
               autoCapitalize="characters"
               autoCorrect={false}
             />
+
+            <View style={styles.inlineRow}>
+              <View style={styles.inlineField}>
+                <Text style={styles.label}>Algoritmo</Text>
+                <TextInput
+                  style={styles.input}
+                  value={algorithm}
+                  onChangeText={setAlgorithm}
+                  placeholder="SHA1"
+                  placeholderTextColor="#9ca3af"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                />
+              </View>
+              <View style={styles.inlineField}>
+                <Text style={styles.label}>Dígitos</Text>
+                <TextInput
+                  style={styles.input}
+                  value={digits}
+                  onChangeText={setDigits}
+                  placeholder="6"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="number-pad"
+                />
+              </View>
+              <View style={styles.inlineField}>
+                <Text style={styles.label}>Período</Text>
+                <TextInput
+                  style={styles.input}
+                  value={period}
+                  onChangeText={setPeriod}
+                  placeholder="30"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="number-pad"
+                />
+              </View>
+            </View>
 
             <TouchableOpacity
               style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
@@ -184,7 +240,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9fafb",
   },
   secretInput: {
-    letterSpacing: 1.2,
+    letterSpacing: 1.1,
+  },
+  inlineRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  inlineField: {
+    flex: 1,
+    gap: 8,
   },
   submitButton: {
     marginTop: 8,

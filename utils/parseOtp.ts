@@ -1,25 +1,35 @@
-export const parseOtpUri = (uri: string): { issuer?: string; account?: string; secret: string | null } => {
-  const url = new URL(uri);
+import { parse } from "@otplib/uri";
+import type { OtpEntryInput } from "@/types/otp";
+import { normalizeAlgorithm, normalizeDigits, normalizePeriod, normalizeSecret } from "@/utils/otp";
 
-  const secret = url.searchParams.get("secret");
-  const issuer = url.searchParams.get("issuer");
+export const parseOtpUri = (uri: string): OtpEntryInput | null => {
+  try {
+    const parsed = parse(uri);
 
-  const label = decodeURIComponent(url.pathname.slice(1));
-  const parts = label.split(":");
+    if (parsed.type !== "totp") {
+      return null;
+    }
 
-  let account: string | undefined;
-  let issuerFromLabel: string | undefined;
+    const label = parsed.label;
+    const separatorIndex = label.indexOf(":");
+    const issuerFromLabel = separatorIndex >= 0 ? label.slice(0, separatorIndex) : undefined;
+    const accountFromLabel = separatorIndex >= 0 ? label.slice(separatorIndex + 1) : label;
+    const secret = typeof parsed.params.secret === "string" ? normalizeSecret(parsed.params.secret) : "";
 
-  if (parts.length > 1) {
-    issuerFromLabel = parts[0];
-    account = parts.slice(1).join(":");
-  } else {
-    account = parts[0];
+    if (!secret) {
+      return null;
+    }
+
+    return {
+      type: "totp",
+      issuer: parsed.params.issuer ?? issuerFromLabel,
+      account: accountFromLabel,
+      secret,
+      algorithm: normalizeAlgorithm(parsed.params.algorithm),
+      digits: normalizeDigits(parsed.params.digits),
+      period: normalizePeriod(parsed.params.period),
+    };
+  } catch {
+    return null;
   }
-
-  return {
-    issuer: issuer || issuerFromLabel,
-    account,
-    secret,
-  };
 };
