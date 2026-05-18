@@ -3,8 +3,15 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { generateToken } from "@/services/totp";
 import type { Account } from "@/storage/secureStore";
-import { getAccounts, removeAccount, updateAccount } from "@/storage/secureStore";
-import { getAccountDisplayName, getAccountSubtitle } from "@/utils/account-display";
+import {
+  getAccounts,
+  removeAccount,
+  updateAccount,
+} from "@/storage/secureStore";
+import {
+  getAccountDisplayName,
+  getAccountSubtitle,
+} from "@/utils/account-display";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Clipboard from "expo-clipboard";
@@ -45,16 +52,20 @@ export default function AccountDetailScreen() {
 
   const sheetTranslateY = useRef(new Animated.Value(400)).current;
 
-  const animateSheet = useCallback((toValue: number, callback?: () => void) => {
-    Animated.timing(sheetTranslateY, {
-      toValue,
-      duration: toValue === 0 ? 250 : 200,
-      easing: toValue === 0 ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished && callback) callback();
-    });
-  }, [sheetTranslateY]);
+  const animateSheet = useCallback(
+    (toValue: number, callback?: () => void) => {
+      Animated.timing(sheetTranslateY, {
+        toValue,
+        duration: toValue === 0 ? 250 : 200,
+        easing:
+          toValue === 0 ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished && callback) callback();
+      });
+    },
+    [sheetTranslateY],
+  );
 
   const openActions = () => {
     setIsActionsVisible(true);
@@ -69,7 +80,7 @@ export default function AccountDetailScreen() {
     if (!account) return;
     setIssuerInput(account.issuer ?? "");
     setAccountInput(account.account ?? "");
-    
+
     // Close actions with animation first
     animateSheet(400, () => {
       setIsActionsVisible(false);
@@ -118,7 +129,9 @@ export default function AccountDetailScreen() {
 
   const displayName = account ? getAccountDisplayName(account) : "Conta";
   const subtitle = account ? getAccountSubtitle(account) : "";
-  const formattedToken = token ? `${token.slice(0, 3)} ${token.slice(3)}` : "--- ---";
+  const formattedToken = token
+    ? `${token.slice(0, 3)} ${token.slice(3)}`
+    : "--- ---";
   const isLowTime = timeLeft <= 10;
   const activeSegments = Math.max(0, Math.min(TIMER_SEGMENTS, timeLeft));
 
@@ -139,17 +152,21 @@ export default function AccountDetailScreen() {
 
     animateSheet(400, () => {
       setIsActionsVisible(false);
-      Alert.alert("Remover conta?", "Essa conta será removida deste dispositivo.", [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Remover",
-          style: "destructive",
-          onPress: async () => {
-            await removeAccount(account.id);
-            router.replace("/");
+      Alert.alert(
+        "Remover conta?",
+        "Essa conta será removida deste dispositivo.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Remover",
+            style: "destructive",
+            onPress: async () => {
+              await removeAccount(account.id);
+              router.replace("/");
+            },
           },
-        },
-      ]);
+        ],
+      );
     });
   }, [account, animateSheet, router]);
 
@@ -162,14 +179,15 @@ export default function AccountDetailScreen() {
             backgroundColor: theme.headerBackground,
             borderBottomColor: theme.headerBorder,
           },
-        ]}>
+        ]}
+      >
         <Pressable style={styles.headerButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Detalhes</Text>
-        <Pressable
-          style={styles.headerButton}
-          onPress={openActions}>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>
+          Detalhes
+        </Text>
+        <Pressable style={styles.headerButton} onPress={openActions}>
           <Ionicons name="settings-outline" size={22} color={theme.text} />
         </Pressable>
       </View>
@@ -183,8 +201,11 @@ export default function AccountDetailScreen() {
                 backgroundColor: theme.cardBackground,
                 borderColor: theme.headerBorder,
               },
-            ]}>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>Conta não encontrada</Text>
+            ]}
+          >
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>
+              Conta não encontrada
+            </Text>
             <Text style={[styles.emptySubtitle, { color: theme.icon }]}>
               Essa conta pode ter sido removida ou ainda não foi carregada.
             </Text>
@@ -192,104 +213,120 @@ export default function AccountDetailScreen() {
         ) : null}
 
         {account ? (
-        <View
-          style={[
-            styles.hero,
-            {
-              backgroundColor: theme.cardBackground,
-              borderColor: theme.headerBorder,
-            },
-          ]}>
-          <View style={styles.heroTopRow}>
-            <CompanyLogo
-              label={`${displayName} ${subtitle}`}
-              size={64}
-              dark={colorScheme === "dark"}
-            />
-            <View style={styles.heroTextContent}>
-              <Text style={[styles.heroTitle, { color: theme.text }]}>{displayName}</Text>
-              <Text style={[styles.heroSubtitle, { color: theme.icon }]}>{subtitle}</Text>
-            </View>
-          </View>
-
-          <Pressable
+          <View
             style={[
-              styles.codeCard,
-              { backgroundColor: colorScheme === "dark" ? "#101828" : "#eff6ff" },
+              styles.hero,
+              {
+                backgroundColor: theme.cardBackground,
+                borderColor: theme.headerBorder,
+              },
             ]}
-            onPress={() => {
-              if (token) {
-                Clipboard.setStringAsync(token);
-              }
-            }}>
-            <View style={styles.codeCardContent}>
-              <View style={styles.codeTextContainer}>
-                <Text
-                  style={[
-                    styles.codeLabel,
-                    { color: colorScheme === "dark" ? "#93c5fd" : "#2563eb" },
-                  ]}>
-                  Código atual
+          >
+            <View style={styles.heroTopRow}>
+              <CompanyLogo
+                label={`${displayName} ${subtitle}`}
+                size={64}
+                dark={colorScheme === "dark"}
+              />
+              <View style={styles.heroTextContent}>
+                <Text style={[styles.heroTitle, { color: theme.text }]}>
+                  {displayName}
                 </Text>
-                <Text
-                  style={[
-                    styles.codeValue,
-                    { color: isLowTime ? "#ef4444" : theme.text },
-                  ]}>
-                  {formattedToken}
+                <Text style={[styles.heroSubtitle, { color: theme.icon }]}>
+                  {subtitle}
                 </Text>
               </View>
+            </View>
 
-              <View style={styles.timerSection}>
-                <View style={styles.timerRingWrap}>
-                  <View style={styles.timerTrack}>
-                    {Array.from({ length: TIMER_SEGMENTS }).map((_, index) => {
-                      const angle = (360 / TIMER_SEGMENTS) * index;
-                      const isActive = index < activeSegments;
-
-                      return (
-                        <View
-                          key={index}
-                          style={[
-                            styles.timerSegment,
-                            {
-                              backgroundColor: isActive
-                                ? isLowTime
-                                  ? "#ef4444"
-                                  : "#2563eb"
-                                : colorScheme === "dark"
-                                  ? "#2C2C2E"
-                                  : "#E5E7EB",
-                              transform: [
-                                { rotate: `${angle}deg` },
-                                { translateY: -(TIMER_TRACK_SIZE / 2 - 8) },
-                              ],
-                            },
-                          ]}
-                        />
-                      );
-                    })}
-                  </View>
-                  <View
+            <Pressable
+              style={[
+                styles.codeCard,
+                {
+                  backgroundColor:
+                    colorScheme === "dark" ? "#101828" : "#eff6ff",
+                },
+              ]}
+              onPress={() => {
+                if (token) {
+                  Clipboard.setStringAsync(token);
+                }
+              }}
+            >
+              <View style={styles.codeCardContent}>
+                <View style={styles.codeTextContainer}>
+                  <Text
                     style={[
-                      styles.timerCenter,
-                      {
-                        backgroundColor: colorScheme === "dark" ? "#111827" : "#ffffff",
-                      },
-                    ]}>
-                    <Text
+                      styles.codeLabel,
+                      { color: colorScheme === "dark" ? "#93c5fd" : "#2563eb" },
+                    ]}
+                  >
+                    Código de senha de uso único
+                  </Text>
+                  <Text
+                    style={[
+                      styles.codeValue,
+                      { color: isLowTime ? "#ef4444" : theme.text },
+                    ]}
+                  >
+                    {formattedToken}
+                  </Text>
+                </View>
+
+                <View style={styles.timerSection}>
+                  <View style={styles.timerRingWrap}>
+                    <View style={styles.timerTrack}>
+                      {Array.from({ length: TIMER_SEGMENTS }).map(
+                        (_, index) => {
+                          const angle = (360 / TIMER_SEGMENTS) * index;
+                          const isActive = index < activeSegments;
+
+                          return (
+                            <View
+                              key={index}
+                              style={[
+                                styles.timerSegment,
+                                {
+                                  backgroundColor: isActive
+                                    ? isLowTime
+                                      ? "#ef4444"
+                                      : "#2563eb"
+                                    : colorScheme === "dark"
+                                      ? "#2C2C2E"
+                                      : "#E5E7EB",
+                                  transform: [
+                                    { rotate: `${angle}deg` },
+                                    { translateY: -(TIMER_TRACK_SIZE / 2 - 8) },
+                                  ],
+                                },
+                              ]}
+                            />
+                          );
+                        },
+                      )}
+                    </View>
+                    <View
                       style={[
-                        styles.timerValue,
-                        { color: isLowTime ? "#ef4444" : theme.text },
-                      ]}>
-                      {timeLeft}
-                    </Text>
+                        styles.timerCenter,
+                        {
+                          backgroundColor:
+                            colorScheme === "dark" ? "#111827" : "#ffffff",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.timerValue,
+                          { color: isLowTime ? "#ef4444" : theme.text },
+                        ]}
+                      >
+                        {timeLeft}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
-          </Pressable>
-        </View>
+            </Pressable>
+          </View>
         ) : null}
       </ScrollView>
 
@@ -297,12 +334,10 @@ export default function AccountDetailScreen() {
         visible={isActionsVisible}
         transparent
         animationType="none"
-        onRequestClose={closeActions}>
+        onRequestClose={closeActions}
+      >
         <View style={styles.modalRoot}>
-          <Pressable
-            style={styles.modalOverlay}
-            onPress={closeActions}
-          />
+          <Pressable style={styles.modalOverlay} onPress={closeActions} />
           <Animated.View
             style={[
               styles.actionsCard,
@@ -311,7 +346,8 @@ export default function AccountDetailScreen() {
                 borderTopColor: theme.headerBorder,
                 transform: [{ translateY: sheetTranslateY }],
               },
-            ]}>
+            ]}
+          >
             <View style={styles.sheetHandle} />
             <Pressable style={styles.actionRow} onPress={openEditModal}>
               <Ionicons name="create-outline" size={20} color={theme.text} />
@@ -333,12 +369,10 @@ export default function AccountDetailScreen() {
         visible={isEditVisible}
         transparent
         animationType="none"
-        onRequestClose={closeEdit}>
+        onRequestClose={closeEdit}
+      >
         <View style={styles.modalRoot}>
-          <Pressable
-            style={styles.modalOverlay}
-            onPress={closeEdit}
-          />
+          <Pressable style={styles.modalOverlay} onPress={closeEdit} />
           <Animated.View
             style={[
               styles.editCard,
@@ -347,9 +381,12 @@ export default function AccountDetailScreen() {
                 borderTopColor: theme.headerBorder,
                 transform: [{ translateY: sheetTranslateY }],
               },
-            ]}>
+            ]}
+          >
             <View style={styles.sheetHandle} />
-            <Text style={[styles.editTitle, { color: theme.text }]}>Editar conta</Text>
+            <Text style={[styles.editTitle, { color: theme.text }]}>
+              Editar conta
+            </Text>
             <TextInput
               value={issuerInput}
               onChangeText={setIssuerInput}
@@ -360,7 +397,8 @@ export default function AccountDetailScreen() {
                 {
                   color: theme.text,
                   borderColor: theme.headerBorder,
-                  backgroundColor: colorScheme === "dark" ? "#111827" : "#f8fafc",
+                  backgroundColor:
+                    colorScheme === "dark" ? "#111827" : "#f8fafc",
                 },
               ]}
             />
@@ -375,7 +413,8 @@ export default function AccountDetailScreen() {
                 {
                   color: theme.text,
                   borderColor: theme.headerBorder,
-                  backgroundColor: colorScheme === "dark" ? "#111827" : "#f8fafc",
+                  backgroundColor:
+                    colorScheme === "dark" ? "#111827" : "#f8fafc",
                 },
               ]}
             />
@@ -384,15 +423,22 @@ export default function AccountDetailScreen() {
                 style={[
                   styles.secondaryButton,
                   {
-                    backgroundColor: colorScheme === "dark" ? "#1f2937" : "#f3f4f6",
+                    backgroundColor:
+                      colorScheme === "dark" ? "#1f2937" : "#f3f4f6",
                   },
                 ]}
-                onPress={closeEdit}>
-                <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                onPress={closeEdit}
+              >
+                <Text
+                  style={[styles.secondaryButtonText, { color: theme.text }]}
+                >
                   Cancelar
                 </Text>
               </Pressable>
-              <Pressable style={styles.primaryButton} onPress={handleSaveAccount}>
+              <Pressable
+                style={styles.primaryButton}
+                onPress={handleSaveAccount}
+              >
                 <Text style={styles.primaryButtonText}>Salvar</Text>
               </Pressable>
             </View>
@@ -515,9 +561,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   codeLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
+    fontSize: 14,
+    fontWeight: "500",
     letterSpacing: 0.8,
   },
   codeValue: {
