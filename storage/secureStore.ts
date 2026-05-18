@@ -19,6 +19,24 @@ export const removeAccount = async (secret: string) => {
   await saveAccounts(filtered);
 };
 
+export const updateAccount = async (
+  secret: string,
+  updates: Pick<Account, "issuer" | "account">,
+) => {
+  const accounts = await getAccounts();
+  const updatedAccounts = accounts.map((item) =>
+    item.secret === secret
+      ? {
+          ...item,
+          issuer: updates.issuer,
+          account: updates.account,
+        }
+      : item,
+  );
+
+  await saveAccounts(updatedAccounts);
+};
+
 export const getAccounts = async (): Promise<Account[]> => {
   const data = await SecureStore.getItemAsync(KEY);
   return data ? JSON.parse(data) : [];

@@ -1,87 +1,40 @@
-import { useRouter } from "expo-router";
-import { useEffect, useState, useCallback, useRef, useMemo, type ComponentProps } from "react";
+import { CompanyLogo } from "@/components/company-logo";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { generateToken } from "@/services/totp";
+import type { Account } from "@/storage/secureStore";
+import { getAccounts, removeAccount } from "@/storage/secureStore";
+import {
+  getAccountDisplayName,
+  getAccountSubtitle,
+} from "@/utils/account-display";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import * as Clipboard from "expo-clipboard";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
   FlatList,
+  Modal,
   PanResponder,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
-  View,
-  Alert,
   TouchableOpacity,
-  Modal,
-  Animated,
-  Easing,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import * as Clipboard from "expo-clipboard";
-import { generateToken } from "@/services/totp";
-import type { Account } from "@/storage/secureStore";
-import { getAccounts, removeAccount } from "@/storage/secureStore";
 
 const STEP = 30;
-type IoniconName = ComponentProps<typeof Ionicons>["name"];
-
-const SERVICE_ICON_MAP: Record<string, IoniconName> = {
-  google: "logo-google",
-  github: "logo-github",
-  gitlab: "logo-gitlab",
-  microsoft: "logo-microsoft",
-  amazon: "logo-amazon",
-  apple: "logo-apple",
-  facebook: "logo-facebook",
-  twitter: "logo-twitter",
-  twitch: "logo-twitch",
-  discord: "logo-discord",
-  bitbucket: "logo-bitbucket",
-  linkedin: "logo-linkedin",
-  dropbox: "logo-dropbox",
-  yahoo: "mail-outline",
-};
-
-const SERVICE_COLOR_MAP: Record<string, { icon: string; background: string }> = {
-  google: { icon: "#DB4437", background: "#FEEFEA" },
-  github: { icon: "#181717", background: "#ECECEC" },
-  gitlab: { icon: "#FC6D26", background: "#FFF1E8" },
-  microsoft: { icon: "#00A4EF", background: "#EAF6FF" },
-  amazon: { icon: "#FF9900", background: "#FFF4E5" },
-  apple: { icon: "#111111", background: "#F0F0F0" },
-  facebook: { icon: "#1877F2", background: "#EAF2FF" },
-  twitter: { icon: "#1D9BF0", background: "#E8F6FF" },
-  twitch: { icon: "#9146FF", background: "#F3ECFF" },
-  discord: { icon: "#5865F2", background: "#EEF0FF" },
-  bitbucket: { icon: "#0052CC", background: "#EAF1FF" },
-  linkedin: { icon: "#0A66C2", background: "#E9F2FB" },
-  dropbox: { icon: "#0061FF", background: "#E8F1FF" },
-  yahoo: { icon: "#6001D2", background: "#F3ECFF" },
-};
-
-const getServiceName = (account: Account): string | null => {
-  const source = `${account.issuer ?? ""} ${account.account ?? ""}`.toLowerCase();
-
-  for (const serviceName of Object.keys(SERVICE_ICON_MAP)) {
-    if (source.includes(serviceName)) {
-      return serviceName;
-    }
-  }
-
-  return null;
-};
-
-const getServiceIcon = (account: Account): IoniconName => {
-  const service = getServiceName(account);
-  if (!service) return "key-outline";
-  return SERVICE_ICON_MAP[service];
-};
-
-const getServiceColors = (account: Account): { icon: string; background: string } => {
-  const service = getServiceName(account);
-  if (!service) return { icon: "#0a7ea4", background: "#e0f2f1" };
-  return SERVICE_COLOR_MAP[service] ?? { icon: "#0a7ea4", background: "#e0f2f1" };
-};
+const MINI_TIMER_SIZE = 54;
+const MINI_TIMER_SEGMENTS = 30;
+const MINI_TIMER_TRACK_SIZE = MINI_TIMER_SIZE - 8;
+const MINI_TIMER_SEGMENT_WIDTH = 3;
+const MINI_TIMER_SEGMENT_HEIGHT = 9;
 
 export default function HomeScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -91,6 +44,7 @@ export default function HomeScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isHeaderMenuVisible, setIsHeaderMenuVisible] = useState(false);
+  const [isShowingCodes, setIsShowingCodes] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const router = useRouter();
 
@@ -107,14 +61,13 @@ export default function HomeScreen() {
   useEffect(() => {
     const tick = () => {
       const now = Math.floor(Date.now() / 1000);
-      const remaining = STEP - (now % STEP);
-      setTimeLeft(remaining);
+      setTimeLeft(STEP - (now % STEP));
 
-      const newTokens: Record<string, string> = {};
-      accounts.forEach((acc) => {
-        newTokens[acc.secret] = generateToken(acc.secret);
+      const nextTokens: Record<string, string> = {};
+      accounts.forEach((item) => {
+        nextTokens[item.secret] = generateToken(item.secret);
       });
-      setTokens(newTokens);
+      setTokens(nextTokens);
     };
 
     tick();
@@ -140,12 +93,9 @@ export default function HomeScreen() {
 
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
-  const [accountPendingDeletion, setAccountPendingDeletion] = useState<Account | null>(null);
+  const [accountPendingDeletion, setAccountPendingDeletion] =
+    useState<Account | null>(null);
   const sheetTranslateY = useRef(new Animated.Value(300)).current;
-
-  const copyToClipboard = async (token: string) => {
-    await Clipboard.setStringAsync(token);
-  };
 
   const isLowTime = timeLeft <= 10;
   const progress = (timeLeft / STEP) * 100;
@@ -156,7 +106,10 @@ export default function HomeScreen() {
     return accounts.filter((account) => {
       const issuer = account.issuer?.toLowerCase() ?? "";
       const accountName = account.account?.toLowerCase() ?? "";
-      return issuer.includes(normalizedQuery) || accountName.includes(normalizedQuery);
+      return (
+        issuer.includes(normalizedQuery) ||
+        accountName.includes(normalizedQuery)
+      );
     });
   }, [accounts, searchQuery]);
 
@@ -168,16 +121,19 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [isSearching]);
 
-  const openMenu = useCallback((account: Account) => {
-    setSelectedAccount(account);
-    setIsMenuVisible(true);
-    Animated.timing(sheetTranslateY, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [sheetTranslateY]);
+  const openMenu = useCallback(
+    (account: Account) => {
+      setSelectedAccount(account);
+      setIsMenuVisible(true);
+      Animated.timing(sheetTranslateY, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    },
+    [sheetTranslateY],
+  );
 
   const closeMenu = useCallback(() => {
     Animated.timing(sheetTranslateY, {
@@ -201,7 +157,10 @@ export default function HomeScreen() {
         break;
       // Other options will be implemented later
       default:
-        Alert.alert("Em breve", `A opção "${option}" será implementada em breve.`);
+        Alert.alert(
+          "Em breve",
+          `A opção "${option}" será implementada em breve.`,
+        );
         break;
     }
     closeMenu();
@@ -239,40 +198,51 @@ export default function HomeScreen() {
           }).start();
         },
       }),
-    [closeMenu, sheetTranslateY]
+    [closeMenu, sheetTranslateY],
   );
+
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
 
   const EmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.welcomeSection}>
-        <Ionicons name="shield-checkmark-outline" size={80} color="#0a7ea4" />
-        <Text style={styles.welcomeTitle}>
-          Vamos adicionar sua primeira conta!
+        <View
+          style={[
+            styles.welcomeIconContainer,
+            { backgroundColor: colorScheme === "dark" ? "#1C1C1E" : "#F2F2F7" },
+          ]}
+        >
+          <Ionicons name="shield-checkmark" size={60} color={theme.tint} />
+        </View>
+        <Text style={[styles.welcomeTitle, { color: theme.text }]}>
+          Segurança em primeiro lugar
+        </Text>
+        <Text style={[styles.welcomeDescription, { color: theme.icon }]}>
+          Adicione suas contas para protegê-las com autenticação de dois
+          fatores.
         </Text>
         <Pressable
-          style={styles.mainAddButton}
+          style={[styles.mainAddButton, { backgroundColor: theme.text }]}
           onPress={() => router.push("/scan")}
         >
-          <Text style={styles.mainAddButtonText}>Adicionar conta</Text>
+          <Text style={[styles.mainAddButtonText, { color: theme.background }]}>
+            Começar agora
+          </Text>
         </Pressable>
       </View>
 
       <View style={styles.recoverySection}>
-        <Text style={styles.recoveryTitle}>Já tem um backup?</Text>
-        <Text style={styles.recoverySubtitle}>
-          Entre na sua conta de recuperação
+        <Text style={[styles.recoveryTitle, { color: theme.icon }]}>
+          Já possui um backup?
         </Text>
         <Pressable
           style={styles.recoveryLink}
           onPress={() => router.push("/explore")}
         >
-          <Text style={styles.recoveryLinkText}>Iniciar a recuperação</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.bottomActions}>
-        <Pressable style={styles.fabScan} onPress={() => router.push("/scan")}>
-          <Ionicons name="qr-code-outline" size={28} color="#fff" />
+          <Text style={[styles.recoveryLinkText, { color: theme.tint }]}>
+            Restaurar contas
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -296,8 +266,17 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: theme.headerBackground,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.headerBorder,
+          },
+        ]}
+      >
         {isSearching ? (
           <View style={styles.searchHeaderContainer}>
             <TouchableOpacity
@@ -308,24 +287,28 @@ export default function HomeScreen() {
                 setIsHeaderMenuVisible(false);
               }}
             >
-              <Ionicons name="arrow-back" size={24} color="white" />
+              <Ionicons name="arrow-back" size={24} color={theme.text} />
             </TouchableOpacity>
             <TextInput
               ref={searchInputRef}
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: theme.text }]}
               placeholder="Pesquisar contas"
-              placeholderTextColor="#d1d5db"
+              placeholderTextColor={
+                colorScheme === "dark" ? "#9ca3af" : "#6b7280"
+              }
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCapitalize="none"
               autoCorrect={false}
-              selectionColor="#ffffff"
+              selectionColor={theme.tint}
               returnKeyType="search"
             />
           </View>
         ) : (
           <>
-            <Text style={styles.title}>Authenticator</Text>
+            <Text style={[styles.title, { color: theme.text }]}>
+              Authenticator
+            </Text>
 
             <View style={styles.headerActions}>
               <TouchableOpacity
@@ -335,21 +318,25 @@ export default function HomeScreen() {
                   setIsHeaderMenuVisible(false);
                 }}
               >
-                <Ionicons name="search-outline" size={24} color="white" />
+                <Ionicons name="search-outline" size={24} color={theme.text} />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.headerButton}
                 onPress={() => router.push("/scan")}
               >
-                <Ionicons name="add" size={30} color="white" />
+                <Ionicons name="add" size={30} color={theme.text} />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.headerButton}
                 onPress={() => setIsHeaderMenuVisible((prev) => !prev)}
               >
-                <Ionicons name="ellipsis-vertical" size={24} color="white" />
+                <Ionicons
+                  name="ellipsis-vertical"
+                  size={24}
+                  color={theme.text}
+                />
               </TouchableOpacity>
             </View>
           </>
@@ -361,7 +348,7 @@ export default function HomeScreen() {
             style={styles.headerMenuBackdrop}
             onPress={() => setIsHeaderMenuVisible(false)}
           />
-          <View style={styles.headerMenu}>
+          <View style={[styles.headerMenu, { backgroundColor: theme.cardBackground, borderColor: theme.headerBorder, borderWidth: 1 }]}>
             <TouchableOpacity
               style={styles.headerMenuItem}
               onPress={() => {
@@ -369,8 +356,8 @@ export default function HomeScreen() {
                 router.push("/settings");
               }}
             >
-              <Ionicons name="settings-outline" size={18} color="#1f2937" />
-              <Text style={styles.headerMenuText}>Configurações</Text>
+              <Ionicons name="settings-outline" size={18} color={theme.text} />
+              <Text style={[styles.headerMenuText, { color: theme.text }]}>Configurações</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerMenuItem}
@@ -379,22 +366,45 @@ export default function HomeScreen() {
                 Alert.alert("Ajuda", "Central de ajuda em breve.");
               }}
             >
-              <Ionicons name="help-circle-outline" size={18} color="#1f2937" />
-              <Text style={styles.headerMenuText}>Ajuda</Text>
+              <Ionicons name="help-circle-outline" size={18} color={theme.text} />
+              <Text style={[styles.headerMenuText, { color: theme.text }]}>Ajuda</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerMenuItem}
+              onPress={() => {
+                setIsShowingCodes((prev) => !prev);
+                setIsHeaderMenuVisible(false);
+              }}
+            >
+              <Ionicons
+                name={isShowingCodes ? "eye-off-outline" : "eye-outline"}
+                size={18}
+                color={theme.text}
+              />
+              <Text style={[styles.headerMenuText, { color: theme.text }]}>
+                {isShowingCodes ? "Ocultar códigos" : "Mostrar os códigos"}
+              </Text>
             </TouchableOpacity>
           </View>
         </>
       )}
 
       {filteredAccounts.length > 0 && (
-        <>
-          <View style={styles.timerBar}>
+        <View style={styles.timerContainer}>
+          <View
+            style={[
+              styles.timerBar,
+              {
+                backgroundColor: colorScheme === "dark" ? "#2C2C2E" : "#E5E5E7",
+              },
+            ]}
+          >
             <View
               style={[
                 styles.timerFill,
                 {
                   width: `${progress}%`,
-                  backgroundColor: isLowTime ? "#ff3b30" : "#0a7ea4",
+                  backgroundColor: isLowTime ? "#ff3b30" : theme.tint,
                 },
               ]}
             />
@@ -402,12 +412,13 @@ export default function HomeScreen() {
           <Text
             style={[
               styles.timerText,
-              isLowTime && { color: "#ff3b30", fontWeight: "700" },
+              { color: theme.icon },
+              isLowTime && { color: "#ff3b30", fontWeight: "600" },
             ]}
           >
             {timeLeft}s
           </Text>
-        </>
+        </View>
       )}
 
       <FlatList
@@ -419,51 +430,186 @@ export default function HomeScreen() {
           styles.list,
           filteredAccounts.length === 0 && { flex: 1 },
         ]}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View
-                style={[
-                  styles.iconContainer,
-                  { backgroundColor: getServiceColors(item).background },
-                ]}
-              >
-                <Ionicons
-                  name={getServiceIcon(item)}
-                  size={24}
-                  color={getServiceColors(item).icon}
-                />
+        renderItem={({ item }) => {
+          const displayName = getAccountDisplayName(item);
+          const subtitle = getAccountSubtitle(item);
+          const token = tokens[item.secret] || "";
+          const activeSegments = Math.max(
+            0,
+            Math.min(MINI_TIMER_SEGMENTS, timeLeft),
+          );
+
+          return (
+            <Pressable
+              style={[
+                styles.card,
+                {
+                  backgroundColor: theme.cardBackground,
+                  borderLeftColor: "#2563eb",
+                },
+              ]}
+              onPress={() =>
+                router.push({
+                  pathname: "/account/[secret]",
+                  params: { secret: item.secret },
+                })
+              }
+            >
+              <View style={styles.cardContent}>
+                <View style={styles.cardLead}>
+                  <CompanyLogo
+                    label={`${displayName} ${subtitle}`}
+                    size={46}
+                    dark={colorScheme === "dark"}
+                  />
+                  <View style={styles.cardText}>
+                    <Text
+                      style={[styles.cardTitle, { color: theme.text }]}
+                      numberOfLines={1}
+                    >
+                      {displayName}
+                    </Text>
+                    <Text
+                      style={[styles.cardSubtitle, { color: theme.icon }]}
+                      numberOfLines={1}
+                    >
+                      {subtitle}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.cardActions}>
+                  <TouchableOpacity
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      router.push({
+                        pathname: "/account/[secret]",
+                        params: { secret: item.secret },
+                      });
+                    }}
+                    style={styles.chevronButton}
+                  >
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color={theme.icon}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      openMenu(item);
+                    }}
+                    style={styles.editButton}
+                  >
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={20}
+                      color={theme.icon}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.issuer}>
-                  {item.issuer || item.account || "Conta"}
-                </Text>
-                {item.issuer && (
-                  <Text style={styles.account}>{item.account}</Text>
-                )}
-              </View>
-              <TouchableOpacity
-                onPress={() => openMenu(item)}
-                style={styles.editButton}
-              >
-                <Ionicons name="pencil-outline" size={22} color="#666" />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.tokenContainer}>
-              <Text style={[styles.token, isLowTime && { color: "#ff3b30" }]}>
-                {tokens[item.secret] || "------"}
-              </Text>
-              <View style={styles.tokenActions}>
-                <TouchableOpacity
-                  onPress={() => copyToClipboard(tokens[item.secret] || "")}
-                  style={styles.actionButton}
+              {isShowingCodes ? (
+                <View
+                  style={[
+                    styles.cardCodeSection,
+                    { borderTopColor: theme.headerBorder },
+                  ]}
                 >
-                  <Ionicons name="copy-outline" size={24} color="#0a7ea4" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
+                  <View style={styles.cardCodeRow}>
+                    <Text
+                      style={[
+                        styles.cardCodeValue,
+                        { color: isLowTime ? "#ef4444" : theme.text },
+                      ]}
+                    >
+                      {token
+                        ? `${token.slice(0, 3)} ${token.slice(3)}`
+                        : "--- ---"}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        if (token) {
+                          Clipboard.setStringAsync(token);
+                        }
+                      }}
+                      style={[
+                        styles.copyCodeButton,
+                        {
+                          backgroundColor:
+                            colorScheme === "dark" ? "#111827" : "#f8fafc",
+                          borderColor: theme.headerBorder,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="copy-outline"
+                        size={18}
+                        color={theme.text}
+                      />
+                    </TouchableOpacity>
+                    <View style={styles.miniTimerWrap}>
+                      <View style={styles.miniTimerTrack}>
+                        {Array.from({ length: MINI_TIMER_SEGMENTS }).map(
+                          (_, index) => {
+                            const angle = (360 / MINI_TIMER_SEGMENTS) * index;
+                            const isActive = index < activeSegments;
+
+                            return (
+                              <View
+                                key={index}
+                                style={[
+                                  styles.miniTimerSegment,
+                                  {
+                                    backgroundColor: isActive
+                                      ? isLowTime
+                                        ? "#ef4444"
+                                        : "#2563eb"
+                                      : colorScheme === "dark"
+                                        ? "#2C2C2E"
+                                        : "#E5E7EB",
+                                    transform: [
+                                      { rotate: `${angle}deg` },
+                                      {
+                                        translateY: -(
+                                          MINI_TIMER_TRACK_SIZE / 2 -
+                                          4
+                                        ),
+                                      },
+                                    ],
+                                  },
+                                ]}
+                              />
+                            );
+                          },
+                        )}
+                      </View>
+                      <View
+                        style={[
+                          styles.miniTimerCenter,
+                          {
+                            backgroundColor:
+                              colorScheme === "dark" ? "#111827" : "#ffffff",
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.miniTimerValue,
+                            { color: isLowTime ? "#ef4444" : theme.text },
+                          ]}
+                        >
+                          {timeLeft}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        }}
         ListEmptyComponent={
           isLoadingAccounts
             ? LoadingState
@@ -472,6 +618,17 @@ export default function HomeScreen() {
               : EmptyState
         }
       />
+
+      {!isSearching && (
+        <View style={styles.bottomActions}>
+          <Pressable
+            style={[styles.fabScan, { backgroundColor: theme.text }]}
+            onPress={() => router.push("/scan")}
+          >
+            <Ionicons name="qr-code" size={24} color={theme.background} />
+          </Pressable>
+        </View>
+      )}
 
       <Modal
         visible={isMenuVisible}
@@ -484,63 +641,86 @@ export default function HomeScreen() {
           <Animated.View
             style={[
               styles.modalContent,
-              { transform: [{ translateY: sheetTranslateY }] },
+              {
+                backgroundColor: theme.cardBackground,
+                transform: [{ translateY: sheetTranslateY }],
+              },
             ]}
             {...panResponder.panHandlers}
           >
-          <View style={styles.sheetHandle} />
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Opções da Conta</Text>
-            <Text style={styles.modalSubtitle}>
-              {selectedAccount?.issuer || selectedAccount?.account}
-            </Text>
-          </View>
+            <View style={styles.sheetHandle} />
+            <View
+              style={[
+                styles.modalHeader,
+                { borderBottomColor: theme.headerBorder },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Opções da Conta
+              </Text>
+              <Text style={[styles.modalSubtitle, { color: theme.icon }]}>
+                {selectedAccount?.issuer || selectedAccount?.account}
+              </Text>
+            </View>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleMenuOption("edit")}
-          >
-            <Ionicons name="create-outline" size={24} color="#333" />
-            <Text style={styles.menuText}>Editar código 2FA</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleMenuOption("edit")}
+            >
+              <Ionicons name="create-outline" size={24} color={theme.text} />
+              <Text style={[styles.menuText, { color: theme.text }]}>
+                Editar código 2FA
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleMenuOption("icon")}
-          >
-            <Ionicons name="image-outline" size={24} color="#333" />
-            <Text style={styles.menuText}>Alterar ícone de Serviço</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleMenuOption("icon")}
+            >
+              <Ionicons name="image-outline" size={24} color={theme.text} />
+              <Text style={[styles.menuText, { color: theme.text }]}>
+                Alterar ícone de Serviço
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleMenuOption("move")}
-          >
-            <Ionicons name="folder-outline" size={24} color="#333" />
-            <Text style={styles.menuText}>Mover para pasta</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleMenuOption("move")}
+            >
+              <Ionicons name="folder-outline" size={24} color={theme.text} />
+              <Text style={[styles.menuText, { color: theme.text }]}>
+                Mover para pasta
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleMenuOption("export")}
-          >
-            <Ionicons name="share-outline" size={24} color="#333" />
-            <Text style={styles.menuText}>Exportar Código 2FA</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleMenuOption("export")}
+            >
+              <Ionicons name="share-outline" size={24} color={theme.text} />
+              <Text style={[styles.menuText, { color: theme.text }]}>
+                Exportar Código 2FA
+              </Text>
+            </TouchableOpacity>
 
-          <View style={styles.menuDivider} />
+            <View
+              style={[
+                styles.menuDivider,
+                { backgroundColor: theme.headerBorder },
+              ]}
+            />
 
-          <TouchableOpacity
-            style={[styles.menuItem, styles.deleteItem]}
-            onPress={() => handleMenuOption("delete")}
-          >
-            <Ionicons name="trash-outline" size={24} color="#ff3b30" />
-            <Text style={[styles.menuText, styles.deleteText]}>
-              Excluir código
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.menuItem, styles.deleteItem]}
+              onPress={() => handleMenuOption("delete")}
+            >
+              <Ionicons name="trash-outline" size={24} color="#ff3b30" />
+              <Text style={[styles.menuText, styles.deleteText]}>
+                Excluir código
+              </Text>
+            </TouchableOpacity>
           </Animated.View>
-      </View>
+        </View>
       </Modal>
 
       <Modal
@@ -554,25 +734,44 @@ export default function HomeScreen() {
             style={styles.deleteModalOverlay}
             onPress={() => setAccountPendingDeletion(null)}
           />
-          <View style={styles.deleteModalCard}>
+          <View
+            style={[
+              styles.deleteModalCard,
+              { backgroundColor: theme.cardBackground },
+            ]}
+          >
             <View style={styles.deleteIconContainer}>
               <Ionicons name="trash-outline" size={24} color="#ff3b30" />
             </View>
-            <Text style={styles.deleteModalTitle}>Remover conta?</Text>
-            <Text style={styles.deleteModalSubtitle}>
-              {accountPendingDeletion?.issuer || accountPendingDeletion?.account || "Conta"}
+            <Text style={[styles.deleteModalTitle, { color: theme.text }]}>
+              Remover conta?
             </Text>
-            <Text style={styles.deleteModalDescription}>
-              Esta conta de autenticação será removida do dispositivo. Tenha certeza de que você
-              possui um backup antes de continuar.
+            <Text style={[styles.deleteModalSubtitle, { color: theme.icon }]}>
+              {accountPendingDeletion?.issuer ||
+                accountPendingDeletion?.account ||
+                "Conta"}
+            </Text>
+            <Text
+              style={[styles.deleteModalDescription, { color: theme.icon }]}
+            >
+              Esta conta de autenticação será removida do dispositivo. Tenha
+              certeza de que você possui um backup antes de continuar.
             </Text>
 
             <View style={styles.deleteModalActions}>
               <TouchableOpacity
-                style={styles.deleteCancelButton}
+                style={[
+                  styles.deleteCancelButton,
+                  {
+                    backgroundColor:
+                      colorScheme === "dark" ? "#2C2C2E" : "#F2F2F7",
+                  },
+                ]}
                 onPress={() => setAccountPendingDeletion(null)}
               >
-                <Text style={styles.deleteCancelText}>Cancelar</Text>
+                <Text style={[styles.deleteCancelText, { color: theme.text }]}>
+                  Cancelar
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.deleteConfirmButton}
@@ -602,9 +801,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 50,
-    paddingBottom: 16,
-    backgroundColor: "#0a7ea4",
+    paddingTop: 42,
+    paddingBottom: 6,
   },
   headerActions: {
     flexDirection: "row",
@@ -612,12 +810,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerButton: {
-    padding: 4,
+    padding: 6,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "500",
-    color: "white",
+    fontSize: 20,
+    fontWeight: "400",
   },
   searchHeaderContainer: {
     width: "100%",
@@ -627,11 +824,11 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: "#fff",
-    fontSize: 18,
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.45)",
+    fontSize: 17,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(150, 150, 150, 0.1)",
+    borderRadius: 10,
   },
   headerMenuBackdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -639,10 +836,9 @@ const styles = StyleSheet.create({
   },
   headerMenu: {
     position: "absolute",
-    top: 98,
+    top: 90,
     right: 16,
-    backgroundColor: "#fff",
-    borderRadius: 12,
+    borderRadius: 6,
     minWidth: 170,
     zIndex: 6,
     shadowColor: "#000",
@@ -661,85 +857,137 @@ const styles = StyleSheet.create({
   },
   headerMenuText: {
     fontSize: 15,
-    color: "#1f2937",
     fontWeight: "500",
   },
+  timerContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   timerBar: {
-    height: 4,
-    backgroundColor: "#e0e0e0",
-    marginHorizontal: 20,
+    flex: 1,
+    height: 3,
     borderRadius: 2,
     overflow: "hidden",
   },
   timerFill: {
     height: "100%",
-    backgroundColor: "#0a7ea4",
   },
   timerText: {
-    textAlign: "center",
-    marginTop: 8,
-    fontSize: 14,
-    color: "#666",
+    fontSize: 12,
+    width: 25,
+    textAlign: "right",
   },
   list: {
-    padding: 20,
-    gap: 16,
+    paddingTop: 16,
+    paddingBottom: 96,
+    gap: 12,
   },
   card: {
-    padding: 16,
-    backgroundColor: "#f5f5f5",
-    borderRadius: 12,
+    paddingVertical: 18,
+    paddingLeft: 14,
+    paddingRight: 10,
+    width: "100%",
+    borderLeftWidth: 4,
+    borderRadius: 0,
   },
-  cardHeader: {
+  cardContent: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#e0f2f1",
-    justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
   },
-  issuer: {
-    fontSize: 18,
-    fontWeight: "600",
+  cardLead: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minWidth: 0,
   },
-  account: {
+  cardText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  cardSubtitle: {
+    marginTop: 4,
     fontSize: 14,
-    color: "#666",
-    marginTop: 2,
+  },
+  cardActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 12,
   },
   editButton: {
-    padding: 8,
+    padding: 4,
+    marginLeft: 6,
   },
-  token: {
-    fontSize: 32,
-    fontWeight: "700",
-    letterSpacing: 4,
+  chevronButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  tokenContainer: {
+  cardCodeSection: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+  },
+  cardCodeRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 8,
+    gap: 12,
   },
-  tokenActions: {
-    flexDirection: "row",
-    gap: 8,
+  cardCodeValue: {
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    flex: 1,
   },
-  actionButton: {
-    padding: 8,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+  miniTimerWrap: {
+    width: MINI_TIMER_SIZE,
+    height: MINI_TIMER_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  miniTimerTrack: {
+    position: "absolute",
+    width: MINI_TIMER_TRACK_SIZE,
+    height: MINI_TIMER_TRACK_SIZE,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  miniTimerSegment: {
+    position: "absolute",
+    width: MINI_TIMER_SEGMENT_WIDTH,
+    height: MINI_TIMER_SEGMENT_HEIGHT,
+    borderRadius: 999,
+  },
+  miniTimerCenter: {
+    width: MINI_TIMER_SIZE - 18,
+    height: MINI_TIMER_SIZE - 18,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  miniTimerValue: {
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  copyCodeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   // Account options modal styles
   modalRoot: {
@@ -751,57 +999,52 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    maxHeight: "55%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: "60%",
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   sheetHandle: {
     alignSelf: "center",
-    width: 42,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: "#d1d5db",
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(150, 150, 150, 0.3)",
     marginTop: 10,
-    marginBottom: 2,
+    marginBottom: 8,
   },
   modalHeader: {
-    paddingVertical: 20,
+    paddingVertical: 16,
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
     marginBottom: 8,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#333",
   },
   modalSubtitle: {
     fontSize: 14,
-    color: "#666",
     marginTop: 4,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     gap: 12,
   },
   menuText: {
     fontSize: 16,
-    color: "#333",
+    fontWeight: "500",
   },
   menuDivider: {
     height: 1,
-    backgroundColor: "#f0f0f0",
-    marginVertical: 8,
+    marginVertical: 4,
   },
   deleteItem: {
-    marginTop: 8,
+    marginTop: 4,
   },
   deleteText: {
     color: "#ff3b30",
@@ -811,18 +1054,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 22,
+    paddingHorizontal: 24,
   },
   deleteModalOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
   },
   deleteModalCard: {
     width: "100%",
-    maxWidth: 390,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 20,
+    maxWidth: 340,
+    borderRadius: 24,
+    padding: 24,
     alignItems: "center",
   },
   deleteIconContainer: {
@@ -885,7 +1127,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingTop: 40,
+    paddingHorizontal: 32,
   },
   loadingContainer: {
     flex: 1,
@@ -918,71 +1160,69 @@ const styles = StyleSheet.create({
   },
   welcomeSection: {
     alignItems: "center",
-    marginBottom: 60,
+    width: "100%",
+    marginBottom: 48,
+  },
+  welcomeIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
   },
   welcomeTitle: {
     fontSize: 22,
     fontWeight: "700",
     textAlign: "center",
-    marginTop: 20,
-    marginBottom: 24,
-    color: "#333",
+    marginBottom: 12,
+  },
+  welcomeDescription: {
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 32,
   },
   mainAddButton: {
-    backgroundColor: "#0a7ea4",
     paddingHorizontal: 32,
     paddingVertical: 16,
-    borderRadius: 30,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    borderRadius: 16,
+    width: "100%",
+    alignItems: "center",
   },
   mainAddButtonText: {
-    color: "#fff",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
   },
   recoverySection: {
     alignItems: "center",
-    marginBottom: 40,
   },
   recoveryTitle: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 4,
-  },
-  recoverySubtitle: {
     fontSize: 14,
-    color: "#999",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   recoveryLink: {
     padding: 8,
   },
   recoveryLinkText: {
-    color: "#0a7ea4",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    textDecorationLine: "underline",
   },
   bottomActions: {
     position: "absolute",
-    bottom: 20,
-    right: 0,
+    bottom: 24,
+    right: 24,
   },
   fabScan: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#0a7ea4",
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    elevation: 6,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
   },
 });

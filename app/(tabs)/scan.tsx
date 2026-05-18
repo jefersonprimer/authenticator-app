@@ -8,6 +8,9 @@ import type { Account } from "@/storage/secureStore";
 import { getAccounts, saveAccounts } from "@/storage/secureStore";
 import { parseOtpUri } from "@/utils/parseOtp";
 
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Colors } from "@/constants/theme";
+
 export default function Scan() {
   const [permission, requestPermission] = useCameraPermissions();
   const router = useRouter();
@@ -16,6 +19,9 @@ export default function Scan() {
   const [pendingAccount, setPendingAccount] = useState<Account | null>(null);
   const [existingAccount, setExistingAccount] = useState<Account | null>(null);
   const [newAccountName, setNewAccountName] = useState("");
+
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
 
   const normalize = (value?: string) => (value ?? "").trim().toLowerCase();
 
@@ -45,12 +51,12 @@ export default function Scan() {
 
   if (!permission?.granted) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.permissionText}>Permissão da câmera necessária</Text>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <Text style={[styles.permissionText, { color: theme.text }]}>Permissão da câmera necessária</Text>
         <View style={styles.permissionActions}>
           <Button title="Permitir" onPress={requestPermission} />
           <Pressable onPress={() => router.push("/manual-entry")} style={styles.permissionManualButton}>
-            <Text style={styles.permissionManualText}>Enter code manually</Text>
+            <Text style={styles.permissionManualText}>Inserir código manualmente</Text>
           </Pressable>
         </View>
       </View>
@@ -58,7 +64,38 @@ export default function Scan() {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: theme.headerBackground,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.headerBorder,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => router.replace("/")}
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>
+          Scan QR Code
+        </Text>
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => setIsTorchEnabled((value) => !value)}
+        >
+          <Ionicons
+            name={isTorchEnabled ? "flash" : "flash-outline"}
+            size={22}
+            color={theme.text}
+          />
+        </TouchableOpacity>
+      </View>
+
       <CameraView
         style={styles.camera}
         enableTorch={isTorchEnabled}
@@ -100,31 +137,26 @@ export default function Scan() {
       />
 
       <SafeAreaView pointerEvents="box-none" style={styles.overlay}>
-        <View style={styles.topRow}>
-          <Pressable onPress={() => router.replace("/")} style={styles.iconButton}>
-            <Ionicons color="#fff" name="close" size={24} />
-          </Pressable>
-
-          <Text style={styles.headerTitle}>Ler código</Text>
-
-          <Pressable onPress={() => setIsTorchEnabled((value) => !value)} style={styles.iconButton}>
-            <Ionicons color="#fff" name={isTorchEnabled ? "flash" : "flash-outline"} size={22} />
-          </Pressable>
-        </View>
-
         <View pointerEvents="none" style={styles.scanArea}>
-          <View style={styles.scanFrame} />
+          <View style={[styles.scanFrame, { borderColor: theme.tint }]} />
         </View>
 
         <View style={styles.bottomSection}>
-          <Pressable onPress={() => router.push("/manual-entry")} style={styles.manualEntryButton}>
-            <Text style={styles.manualEntryText}>Enter code manually</Text>
+          <Pressable
+            onPress={() => router.push("/manual-entry")}
+            style={[
+              styles.manualEntryButton,
+              { backgroundColor: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.3)" },
+            ]}
+          >
+            <Text style={[styles.manualEntryText, { color: "#fff" }]}>
+              Inserir código manualmente
+            </Text>
           </Pressable>
 
           <View style={styles.footerCenter}>
             <Ionicons color="#fff" name="shield-checkmark-outline" size={16} />
-            <Text style={styles.footerText}>Lido por PrimerLabs em nome de Authenticator</Text>
-            <Ionicons color="#fff" name="alert-circle-outline" size={16} />
+            <Text style={styles.footerText}>Protegido por Authenticator</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -137,16 +169,16 @@ export default function Scan() {
       >
         <View style={styles.modalRoot}>
           <Pressable style={styles.modalOverlay} onPress={closeDuplicateModal} />
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Escolha um nome diferente para sua nova conta</Text>
-            <Text style={styles.modalParagraph}>
+          <View style={[styles.modalCard, { backgroundColor: theme.cardBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Escolha um nome diferente para sua nova conta</Text>
+            <Text style={[styles.modalParagraph, { color: theme.icon }]}>
               {`Você tem uma conta do ${existingAccount?.issuer || "provedor"} existente para ${
                 existingAccount?.account || "conta"
               }.`}
             </Text>
 
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { color: theme.text, borderColor: theme.cardBorder, backgroundColor: colorScheme === 'dark' ? '#111' : '#f9f9f9' }]}
               value={newAccountName}
               onChangeText={setNewAccountName}
               placeholder="Alterar o nome da chave (ex: Google)"
@@ -155,11 +187,11 @@ export default function Scan() {
             />
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelButton} onPress={closeDuplicateModal}>
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              <TouchableOpacity style={[styles.cancelButton, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#f3f4f6' }]} onPress={closeDuplicateModal}>
+                <Text style={[styles.cancelButtonText, { color: theme.text }]}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveButton, !newAccountName.trim() && styles.saveButtonDisabled]}
+                style={[styles.saveButton, !newAccountName.trim() && styles.saveButtonDisabled, { backgroundColor: theme.tint }]}
                 disabled={!newAccountName.trim()}
                 onPress={saveRenamedAccount}
               >
@@ -180,11 +212,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     gap: 16,
-    backgroundColor: "#fff",
   },
   permissionText: {
     fontSize: 16,
-    color: "#111827",
     textAlign: "center",
   },
   permissionActions: {
@@ -207,38 +237,33 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    backgroundColor: "#000",
+  },
+  header: {
+    paddingTop: 60,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerButton: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: "space-between",
-  },
-  topRow: {
-    minHeight: 56,
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexDirection: "row",
-    paddingHorizontal: 14,
-  },
-  iconButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.35)",
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
+    paddingTop: 80, // Offset for header
   },
   footerCenter: {
     alignSelf: "center",
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -248,37 +273,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   bottomSection: {
+    position: "absolute",
+    bottom: 40,
+    left: 0,
+    right: 0,
     alignItems: "center",
-    gap: 14,
-    paddingBottom: 16,
+    gap: 20,
   },
   manualEntryButton: {
-    minWidth: 220,
+    minWidth: 240,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    backgroundColor: "rgba(255, 255, 255, 0.16)",
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.24)",
   },
   manualEntryText: {
-    color: "#fff",
     fontSize: 15,
     fontWeight: "600",
   },
   scanArea: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
   scanFrame: {
-    width: 240,
-    height: 240,
+    width: 260,
+    height: 260,
     borderWidth: 2,
-    borderColor: "#fff",
-    borderRadius: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.08)",
+    borderRadius: 24,
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
   },
   modalRoot: {
     flex: 1,
@@ -293,55 +318,47 @@ const styles = StyleSheet.create({
   modalCard: {
     width: "100%",
     maxWidth: 380,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 18,
+    borderRadius: 24,
+    padding: 24,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1f2937",
     marginBottom: 10,
   },
   modalParagraph: {
     fontSize: 14,
-    color: "#4b5563",
     lineHeight: 20,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 15,
-    color: "#111827",
-    marginBottom: 16,
+    marginBottom: 20,
   },
   modalActions: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    gap: 10,
+    gap: 12,
   },
   cancelButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
   cancelButtonText: {
-    color: "#374151",
     fontWeight: "600",
   },
   saveButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: "#0a7ea4",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
   saveButtonDisabled: {
-    backgroundColor: "#8fb8c7",
+    opacity: 0.5,
   },
   saveButtonText: {
     color: "#fff",

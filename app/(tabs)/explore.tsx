@@ -2,8 +2,13 @@ import { useState } from "react";
 import { StyleSheet, Text, View, Pressable, Alert, Share, TextInput, ScrollView } from "react-native";
 import { exportBackup, importBackup } from "@/storage/secureStore";
 
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Colors } from "@/constants/theme";
+
 export default function BackupScreen() {
   const [importText, setImportText] = useState("");
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
 
   const handleExport = async () => {
     try {
@@ -46,13 +51,9 @@ export default function BackupScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Backup</Text>
-      </View>
-
+    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Exportar</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Exportar</Text>
         <Text style={styles.description}>
           Gere um código de backup para salvar suas contas em outro lugar ou transferir para outro celular.
         </Text>
@@ -62,7 +63,7 @@ export default function BackupScreen() {
       </View>
 
       <View style={[styles.section, { marginTop: 32 }]}>
-        <Text style={styles.sectionTitle}>Importar</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Importar</Text>
         <Text style={styles.description}>
           Cole aqui o código de backup que você gerou anteriormente para restaurar suas contas.
         </Text>
@@ -90,16 +91,8 @@ export default function BackupScreen() {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    paddingTop: 60,
-    backgroundColor: "#fff",
+    paddingTop: 20,
     flexGrow: 1,
-  },
-  header: {
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
   },
   section: {
     backgroundColor: "#f8f9fa",

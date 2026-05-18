@@ -16,15 +16,28 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         tabBarInactiveTintColor: colorScheme === "dark" ? "#9BA1A6" : "#687076",
-        headerShown: false,
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: Colors[colorScheme ?? "light"].headerBackground,
+          borderBottomWidth: 1,
+          borderBottomColor: Colors[colorScheme ?? "light"].headerBorder,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        headerTitleStyle: {
+          color: Colors[colorScheme ?? "light"].text,
+          fontSize: 18,
+          fontWeight: "600",
+        },
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: colorScheme === "dark" ? "#151718" : "#fff",
+          backgroundColor: Colors[colorScheme ?? "light"].headerBackground,
           borderTopWidth: 1,
-          borderTopColor: colorScheme === "dark" ? "#222" : "#eee",
+          borderTopColor: Colors[colorScheme ?? "light"].headerBorder,
           height: 60 + insets.bottom,
           paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 8,
+          elevation: 0,
         },
       }}
     >
@@ -32,6 +45,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Contas",
+          headerShown: false,
           tabBarIcon: ({ color }) => <Ionicons size={24} name="key" color={color} />,
         }}
       />
@@ -39,6 +53,7 @@ export default function TabLayout() {
         name="scan"
         options={{
           title: "Escanear",
+          headerShown: false,
           tabBarIcon: ({ color }) => <Ionicons size={24} name="qr-code" color={color} />,
           tabBarStyle: { display: "none" },
         }}

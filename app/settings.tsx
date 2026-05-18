@@ -5,9 +5,14 @@ import { Switch, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { isAppLockEnabled, setAppLockEnabled } from "@/storage/secureStore";
 
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Colors } from "@/constants/theme";
+
 export default function SettingsScreen() {
   const router = useRouter();
   const [appLockEnabled, setAppLockEnabledState] = useState(true);
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
 
   useFocusEffect(
     useCallback(() => {
@@ -31,19 +36,28 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: theme.headerBackground,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.headerBorder,
+          },
+        ]}
+      >
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Configurações</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Configurações</Text>
       </View>
 
       <View style={styles.content}>
-        <View style={styles.settingItem}>
+        <View style={[styles.settingItem, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, borderWidth: 1 }]}>
           <View style={styles.settingTextContainer}>
-            <Text style={styles.settingTitle}>Bloqueio de aplicativo</Text>
-            <Text style={styles.settingDescription}>
+            <Text style={[styles.settingTitle, { color: theme.text }]}>Bloqueio de aplicativo</Text>
+            <Text style={[styles.settingDescription, { color: theme.icon }]}>
               Solicita a senha do celular ao abrir o app.
             </Text>
           </View>
@@ -51,7 +65,7 @@ export default function SettingsScreen() {
             value={appLockEnabled}
             onValueChange={handleToggleAppLock}
             thumbColor="#ffffff"
-            trackColor={{ false: "#d1d5db", true: "#0a7ea4" }}
+            trackColor={{ false: "#d1d5db", true: theme.tint }}
           />
         </View>
       </View>
@@ -62,11 +76,9 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
   },
   header: {
-    backgroundColor: "#0a7ea4",
-    paddingTop: 50,
+    paddingTop: 60,
     paddingBottom: 16,
     paddingHorizontal: 16,
     flexDirection: "row",
@@ -79,13 +91,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: "600",
-    color: "#fff",
   },
   content: {
     padding: 16,
   },
   settingItem: {
-    backgroundColor: "#fff",
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 16,
@@ -100,11 +110,9 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#111827",
   },
   settingDescription: {
     marginTop: 4,
     fontSize: 13,
-    color: "#6b7280",
   },
 });
