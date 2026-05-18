@@ -1,3 +1,4 @@
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { BackupPreview, ImportMode } from "@/services/backup";
@@ -9,6 +10,9 @@ import * as Sharing from "expo-sharing";
 import { useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -57,6 +61,8 @@ export default function BackupScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isPickingFile, setIsPickingFile] = useState(false);
+  const [isExportModalVisible, setIsExportModalVisible] = useState(false);
+  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
 
   const handleExport = async () => {
     const password = exportPassword.trim();
@@ -100,6 +106,7 @@ export default function BackupScreen() {
 
       setExportPassword("");
       setExportPasswordConfirmation("");
+      setIsExportModalVisible(false);
     } catch {
       Alert.alert("Erro", "Não foi possível gerar o backup criptografado.");
     } finally {
@@ -174,6 +181,7 @@ export default function BackupScreen() {
       setSelectedBackupText(null);
       setPreview(null);
       setImportPassword("");
+      setIsImportModalVisible(false);
     } catch (error) {
       const message =
         error instanceof Error && error.message === "BACKUP_PASSWORD_REQUIRED"
@@ -186,312 +194,572 @@ export default function BackupScreen() {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View
-        style={[
-          styles.heroCard,
-          {
-            backgroundColor: theme.cardBackground,
-            borderColor: theme.cardBorder,
-          },
-        ]}
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={[styles.heroTitle, { color: theme.text }]}>Backup local criptografado</Text>
-        <Text style={[styles.heroText, { color: theme.icon }]}>
-          O backup agora sai como arquivo protegido por senha. O app não faz cloud sync e o
-          arquivo nunca deve ser salvo sem essa camada de criptografia.
-        </Text>
-      </View>
-
-      <View
-        style={[
-          styles.section,
-          { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder },
-        ]}
-      >
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Exportar backup</Text>
-        <Text style={[styles.description, { color: theme.icon }]}>
-          Defina uma senha forte. Sem essa senha, o arquivo não poderá ser restaurado.
-        </Text>
-
-        <TextInput
-          value={exportPassword}
-          onChangeText={setExportPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          placeholder="Senha do backup"
-          placeholderTextColor="#9ca3af"
-          style={[
-            styles.input,
-            {
-              color: theme.text,
-              backgroundColor: colorScheme === "dark" ? "#111827" : "#f9fafb",
-              borderColor: theme.cardBorder,
-            },
-          ]}
-        />
-        <TextInput
-          value={exportPasswordConfirmation}
-          onChangeText={setExportPasswordConfirmation}
-          secureTextEntry
-          autoCapitalize="none"
-          placeholder="Confirmar senha"
-          placeholderTextColor="#9ca3af"
-          style={[
-            styles.input,
-            {
-              color: theme.text,
-              backgroundColor: colorScheme === "dark" ? "#111827" : "#f9fafb",
-              borderColor: theme.cardBorder,
-            },
-          ]}
-        />
-
-        <Pressable
-          style={[styles.primaryButton, isExporting && styles.buttonDisabled]}
-          disabled={isExporting}
-          onPress={handleExport}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isExporting ? "Gerando backup..." : "Gerar arquivo criptografado"}
-          </Text>
-        </Pressable>
-      </View>
-
-      <View
-        style={[
-          styles.section,
-          { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder },
-        ]}
-      >
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Importar backup</Text>
-        <Text style={[styles.description, { color: theme.icon }]}>
-          Escolha um arquivo `.backup.json`. Backups antigos em JSON puro ainda são aceitos para
-          migração.
-        </Text>
-
-        <Pressable
-          style={[styles.secondaryButton, { borderColor: theme.cardBorder }]}
-          onPress={handlePickBackup}
-          disabled={isPickingFile}
-        >
-          <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
-            {isPickingFile ? "Lendo arquivo..." : "Selecionar arquivo de backup"}
-          </Text>
-        </Pressable>
-
-        {preview ? (
+        <View style={styles.header}>
           <View
             style={[
-              styles.previewCard,
-              {
-                backgroundColor: colorScheme === "dark" ? "#111827" : "#f8fafc",
-                borderColor: theme.cardBorder,
-              },
+              styles.iconCircle,
+              { backgroundColor: colorScheme === "dark" ? "#1f2937" : "#f1f5f9" },
             ]}
           >
-            <Text style={[styles.previewTitle, { color: theme.text }]}>
-              {selectedFileName ?? "Arquivo selecionado"}
-            </Text>
-            <Text style={[styles.previewText, { color: theme.icon }]}>
-              Tipo: {preview.kind === "encrypted" ? "Criptografado" : "Legado sem criptografia"}
-            </Text>
-            <Text style={[styles.previewText, { color: theme.icon }]}>
-              Contas: {preview.entriesCount}
-            </Text>
-            <Text style={[styles.previewText, { color: theme.icon }]}>
-              Criado em: {formatBackupDate(preview.createdAt)}
-            </Text>
+            <IconSymbol name="shield.fill" size={32} color={theme.tint} />
           </View>
-        ) : null}
-
-        {preview?.requiresPassword ? (
-          <TextInput
-            value={importPassword}
-            onChangeText={setImportPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            placeholder="Senha do backup"
-            placeholderTextColor="#9ca3af"
-            style={[
-              styles.input,
-              {
-                color: theme.text,
-                backgroundColor: colorScheme === "dark" ? "#111827" : "#f9fafb",
-                borderColor: theme.cardBorder,
-              },
-            ]}
-          />
-        ) : null}
-
-        <View style={styles.modeList}>
-          {backupModes.map((mode) => {
-            const active = mode.value === selectedMode;
-
-            return (
-              <Pressable
-                key={mode.value}
-                onPress={() => setSelectedMode(mode.value)}
-                style={[
-                  styles.modeCard,
-                  {
-                    borderColor: active ? theme.tint : theme.cardBorder,
-                    backgroundColor: active
-                      ? colorScheme === "dark"
-                        ? "#132534"
-                        : "#eef7fb"
-                      : theme.cardBackground,
-                  },
-                ]}
-              >
-                <Text style={[styles.modeTitle, { color: theme.text }]}>{mode.title}</Text>
-                <Text style={[styles.modeDescription, { color: theme.icon }]}>
-                  {mode.description}
-                </Text>
-              </Pressable>
-            );
-          })}
+          <Text style={[styles.heroTitle, { color: theme.text }]}>Segurança e Backup</Text>
+          <Text style={[styles.heroText, { color: theme.icon }]}>
+            Seus dados são criptografados localmente. O app não faz sincronização em nuvem para
+            garantir sua privacidade total.
+          </Text>
         </View>
 
-        <Pressable
-          style={[
-            styles.primaryButton,
-            styles.importButton,
-            (!selectedBackupText || isImporting) && styles.buttonDisabled,
-          ]}
-          disabled={!selectedBackupText || isImporting}
-          onPress={handleImport}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isImporting ? "Importando..." : "Importar backup"}
-          </Text>
-        </Pressable>
-      </View>
+        <View style={styles.actionGrid}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionCard,
+              {
+                backgroundColor: theme.cardBackground,
+                borderColor: theme.cardBorder,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+            onPress={() => setIsExportModalVisible(true)}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: "#e0f2fe" }]}>
+              <IconSymbol name="arrow.up.doc.fill" size={24} color="#0369a1" />
+            </View>
+            <Text style={[styles.actionTitle, { color: theme.text }]}>Exportar</Text>
+            <Text style={[styles.actionDescription, { color: theme.icon }]}>
+              Criar um arquivo protegido por senha
+            </Text>
+          </Pressable>
 
-      <View style={styles.warningBox}>
-        <Text style={styles.warningText}>
-          Se você perder o aparelho e também perder esse backup, as contas 2FA podem ficar
-          inacessíveis. Guarde o arquivo e os recovery codes em locais separados.
-        </Text>
-      </View>
-    </ScrollView>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionCard,
+              {
+                backgroundColor: theme.cardBackground,
+                borderColor: theme.cardBorder,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+            onPress={() => setIsImportModalVisible(true)}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: "#f0fdf4" }]}>
+              <IconSymbol name="arrow.down.doc.fill" size={24} color="#15803d" />
+            </View>
+            <Text style={[styles.actionTitle, { color: theme.text }]}>Importar</Text>
+            <Text style={[styles.actionDescription, { color: theme.icon }]}>
+              Restaurar de um arquivo .backup.json
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={[styles.warningBox, { borderColor: theme.cardBorder }]}>
+          <View style={styles.warningHeader}>
+            <IconSymbol name="exclamationmark.triangle.fill" size={20} color="#b45309" />
+            <Text style={styles.warningTitle}>Aviso Importante</Text>
+          </View>
+          <Text style={styles.warningText}>
+            Se você perder o aparelho e não tiver um backup, suas contas 2FA podem ficar
+            inacessíveis permanentemente. Guarde seu backup em um local seguro.
+          </Text>
+        </View>
+      </ScrollView>
+
+      {/* Export Modal */}
+      <Modal
+        visible={isExportModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsExportModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Exportar Backup</Text>
+              <Pressable onPress={() => setIsExportModalVisible(false)}>
+                <Text style={[styles.cancelText, { color: theme.tint }]}>Cancelar</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalBody}>
+              <Text style={[styles.description, { color: theme.icon }]}>
+                Crie uma senha forte (mínimo 8 caracteres). Você precisará dela para restaurar
+                seus dados futuramente.
+              </Text>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { color: theme.text }]}>Senha do backup</Text>
+                <TextInput
+                  value={exportPassword}
+                  onChangeText={setExportPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  placeholder="No mínimo 8 caracteres"
+                  placeholderTextColor="#9ca3af"
+                  style={[
+                    styles.input,
+                    {
+                      color: theme.text,
+                      backgroundColor: theme.cardBackground,
+                      borderColor: theme.cardBorder,
+                    },
+                  ]}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { color: theme.text }]}>Confirmar senha</Text>
+                <TextInput
+                  value={exportPasswordConfirmation}
+                  onChangeText={setExportPasswordConfirmation}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  placeholder="Repita a senha"
+                  placeholderTextColor="#9ca3af"
+                  style={[
+                    styles.input,
+                    {
+                      color: theme.text,
+                      backgroundColor: theme.cardBackground,
+                      borderColor: theme.cardBorder,
+                    },
+                  ]}
+                />
+              </View>
+
+              <Pressable
+                style={[styles.primaryButton, isExporting && styles.buttonDisabled]}
+                disabled={isExporting}
+                onPress={handleExport}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {isExporting ? "Gerando..." : "Gerar arquivo criptografado"}
+                </Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Import Modal */}
+      <Modal
+        visible={isImportModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsImportModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Importar Backup</Text>
+              <Pressable
+                onPress={() => {
+                  setIsImportModalVisible(false);
+                  setPreview(null);
+                  setSelectedBackupText(null);
+                }}
+              >
+                <Text style={[styles.cancelText, { color: theme.tint }]}>Fechar</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalBody}>
+              {!preview ? (
+                <>
+                  <Text style={[styles.description, { color: theme.icon }]}>
+                    Selecione um arquivo `.backup.json` exportado anteriormente por este
+                    aplicativo.
+                  </Text>
+                  <Pressable
+                    style={[styles.secondaryButton, { borderColor: theme.cardBorder }]}
+                    onPress={handlePickBackup}
+                    disabled={isPickingFile}
+                  >
+                    <IconSymbol name="arrow.down.doc.fill" size={20} color={theme.text} />
+                    <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                      {isPickingFile ? "Lendo..." : "Selecionar arquivo"}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <View style={styles.importFlow}>
+                  <View
+                    style={[
+                      styles.previewCard,
+                      {
+                        backgroundColor: theme.cardBackground,
+                        borderColor: theme.cardBorder,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.previewTitle, { color: theme.text }]}>
+                      {selectedFileName}
+                    </Text>
+                    <View style={styles.previewMeta}>
+                      <Text style={[styles.previewText, { color: theme.icon }]}>
+                        {preview.entriesCount} contas •{" "}
+                        {preview.kind === "encrypted" ? "Criptografado" : "Legado"}
+                      </Text>
+                      <Text style={[styles.previewText, { color: theme.icon }]}>
+                        Criado em: {formatBackupDate(preview.createdAt)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {preview.requiresPassword && (
+                    <View style={styles.formGroup}>
+                      <Text style={[styles.label, { color: theme.text }]}>Senha do backup</Text>
+                      <TextInput
+                        value={importPassword}
+                        onChangeText={setImportPassword}
+                        secureTextEntry
+                        autoCapitalize="none"
+                        placeholder="Digite a senha usada na exportação"
+                        placeholderTextColor="#9ca3af"
+                        style={[
+                          styles.input,
+                          {
+                            color: theme.text,
+                            backgroundColor: theme.cardBackground,
+                            borderColor: theme.cardBorder,
+                          },
+                        ]}
+                      />
+                    </View>
+                  )}
+
+                  <Text style={[styles.label, { color: theme.text, marginTop: 10 }]}>
+                    Modo de importação
+                  </Text>
+                  <View style={styles.modeList}>
+                    {backupModes.map((mode) => {
+                      const active = mode.value === selectedMode;
+                      return (
+                        <Pressable
+                          key={mode.value}
+                          onPress={() => setSelectedMode(mode.value)}
+                          style={[
+                            styles.modeCard,
+                            {
+                              borderColor: active ? theme.tint : theme.cardBorder,
+                              backgroundColor: active
+                                ? colorScheme === "dark"
+                                  ? "#1e293b"
+                                  : "#f8fafc"
+                                : theme.cardBackground,
+                            },
+                          ]}
+                        >
+                          <View style={styles.modeRadio}>
+                            <View
+                              style={[
+                                styles.radioOuter,
+                                { borderColor: active ? theme.tint : theme.icon },
+                              ]}
+                            >
+                              {active && (
+                                <View style={[styles.radioInner, { backgroundColor: theme.tint }]} />
+                              )}
+                            </View>
+                            <Text style={[styles.modeTitle, { color: theme.text }]}>
+                              {mode.title}
+                            </Text>
+                          </View>
+                          <Text style={[styles.modeDescription, { color: theme.icon }]}>
+                            {mode.description}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+
+                  <Pressable
+                    style={[
+                      styles.primaryButton,
+                      styles.importButton,
+                      (!selectedBackupText || isImporting) && styles.buttonDisabled,
+                    ]}
+                    disabled={!selectedBackupText || isImporting}
+                    onPress={handleImport}
+                  >
+                    <Text style={styles.primaryButtonText}>
+                      {isImporting ? "Importando..." : "Confirmar Importação"}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.resetButton}
+                    onPress={() => {
+                      setPreview(null);
+                      setSelectedBackupText(null);
+                    }}
+                  >
+                    <Text style={[styles.resetButtonText, { color: theme.icon }]}>
+                      Escolher outro arquivo
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
-    padding: 20,
-    gap: 18,
+    flex: 1,
   },
-  heroCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 20,
+  scrollContent: {
+    padding: 24,
+    gap: 24,
+    paddingBottom: 40,
+  },
+  header: {
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 10,
+    gap: 12,
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
   },
   heroTitle: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
+    textAlign: "center",
   },
   heroText: {
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: "center",
+    paddingHorizontal: 20,
   },
-  section: {
-    borderRadius: 20,
+  actionGrid: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  actionCard: {
+    flex: 1,
+    borderRadius: 24,
     borderWidth: 1,
     padding: 20,
     gap: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  sectionTitle: {
-    fontSize: 19,
-    fontWeight: "700",
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    fontSize: 15,
-  },
-  primaryButton: {
-    borderRadius: 14,
-    backgroundColor: "#0a7ea4",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 15,
-  },
-  importButton: {
-    marginTop: 4,
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    borderWidth: 1,
+  actionIcon: {
+    width: 48,
+    height: 48,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
   },
-  secondaryButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  buttonDisabled: {
-    opacity: 0.55,
-  },
-  previewCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-    gap: 4,
-  },
-  previewTitle: {
-    fontSize: 15,
+  actionTitle: {
+    fontSize: 17,
     fontWeight: "700",
   },
-  previewText: {
+  actionDescription: {
     fontSize: 13,
     lineHeight: 18,
   },
-  modeList: {
+  warningBox: {
+    marginTop: 10,
+    padding: 20,
+    borderRadius: 24,
+    backgroundColor: "#fffbeb",
+    borderWidth: 1,
     gap: 10,
+  },
+  warningHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  warningTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#92400e",
+  },
+  warningText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#b45309",
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    height: "85%",
+    paddingBottom: Platform.OS === "ios" ? 40 : 20,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(0,0,0,0.1)",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  modalBody: {
+    padding: 24,
+    gap: 20,
+  },
+  description: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  formGroup: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+  },
+  primaryButton: {
+    borderRadius: 16,
+    backgroundColor: "#0a7ea4",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  primaryButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  secondaryButton: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    gap: 10,
+    borderStyle: "dashed",
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  importFlow: {
+    gap: 20,
+  },
+  previewCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 20,
+    gap: 12,
+  },
+  previewTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  previewMeta: {
+    gap: 4,
+  },
+  previewText: {
+    fontSize: 14,
+  },
+  modeList: {
+    gap: 12,
   },
   modeCard: {
     borderWidth: 1,
     borderRadius: 16,
-    padding: 14,
+    padding: 16,
+    gap: 4,
+  },
+  modeRadio: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   modeTitle: {
     fontSize: 15,
     fontWeight: "700",
   },
   modeDescription: {
-    marginTop: 4,
     fontSize: 13,
     lineHeight: 18,
+    marginLeft: 30,
   },
-  warningBox: {
-    borderRadius: 16,
-    padding: 16,
-    backgroundColor: "#fff3cd",
-    borderWidth: 1,
-    borderColor: "#ffeeba",
+  importButton: {
+    marginTop: 10,
   },
-  warningText: {
-    color: "#856404",
-    fontSize: 13,
-    lineHeight: 18,
+  resetButton: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  resetButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });
