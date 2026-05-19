@@ -1,50 +1,72 @@
-# Welcome to your Expo app 👋
+# 🛡️ Authenticator
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+<p align="center">
+  <img src="./assets/images/icon.png" width="128" height="128" />
+</p>
 
-## Get started
+Uma solução de autenticação de dois fatores (2FA) moderna, segura e privada, construída com as tecnologias mais recentes do ecossistema **Expo** e **React Native**.
 
-1. Install dependencies
+## ✨ Funcionalidades
 
+- **🔒 Armazenamento de Hardware**: Seus segredos (seeds) são armazenados de forma segura utilizando criptografia em nível de hardware via `Expo SecureStore`.
+- **🛡️ Proteção Biométrica**: Camada extra de segurança com suporte nativo a **Face ID** e **Impressão Digital** para desbloquear o app.
+- **📦 Backups Criptografados**: Sistema robusto de exportação e importação utilizando criptografia `AES-256-GCM` com derivação de chave `PBKDF2-SHA256` (210.000 iterações).
+- **📷 Scanner de QR Code**: Adicione novas contas instantaneamente através da câmera.
+- **⌨️ Entrada Manual**: Suporte total para configuração manual de contas com ajustes finos de algoritmos (SHA1, SHA256, SHA512), número de dígitos e período de renovação.
+- **🌗 Interface Adaptativa**: Suporte completo a temas Claro e Escuro, seguindo as preferências do sistema.
+- **🧩 Gestão de Contas**: Edite nomes de emissores e usuários, ou remova contas com facilidade.
+
+## 📱 Capturas de Tela
+
+<p align="center">
+  <img src="./assets/images/image-1.png" width="200" style="margin: 10px; border-radius: 20px" />
+  <img src="./assets/images/image-2.png" width="200" style="margin: 10px; border-radius: 20px" />
+  <img src="./assets/images/image3.png" width="200" style="margin: 10px; border-radius: 20px" />
+  <img src="./assets/images/image-4.png" width="200" style="margin: 10px; border-radius: 20px" />
+</p>
+
+## 🛠️ Tecnologias
+
+- **Core**: [React Native 0.81](https://reactnative.dev/) & [Expo 54](https://expo.dev/)
+- **Navigation**: [Expo Router](https://docs.expo.dev/router/introduction/) (File-based routing)
+- **Cryptography**: `@noble/ciphers` & `expo-crypto`
+- **TOTP**: `otplib`
+- **UI/UX**: React Native Reanimated, Expo Symbols (iOS) & Material Icons (Android)
+
+## 🚀 Como Começar
+
+### Pré-requisitos
+
+- Node.js (v18 ou superior)
+- npm ou yarn
+- [Expo Go](https://expo.dev/go) instalado no seu dispositivo móvel
+
+### Instalação e Execução
+
+1. **Clone este repositório**
+   ```bash
+   git clone https://github.com/seu-usuario/authenticator.git
+   cd authenticator
+   ```
+
+2. **Instale as dependências**
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. **Inicie o servidor de desenvolvimento**
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. **Abra o aplicativo**
+   - Escaneie o QR Code exibido no terminal com o app **Expo Go** (Android) ou a **Câmera** (iOS).
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🔒 Segurança & Privacidade
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+O **Authenticator** foi desenhado com a privacidade como prioridade máxima:
+- **Offline por Padrão**: Nenhum dado ou segredo é enviado para a nuvem. O app não possui serviços de tracking ou analytics.
+- **Segurança de Dados**: Backups utilizam padrões criptográficos da indústria para garantir que, mesmo se o arquivo for interceptado, seus dados permaneçam inacessíveis sem a senha.
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
+Desenvolvido com foco em segurança e performance.
