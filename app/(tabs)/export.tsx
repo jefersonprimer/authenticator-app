@@ -7,7 +7,6 @@ import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -17,6 +16,7 @@ import {
   View,
   Pressable,
 } from "react-native";
+import { AlertModal } from "@/components/AlertModal";
 
 import { backupScreenStyles as styles } from "./backup-shared";
 
@@ -28,16 +28,31 @@ export default function ExportBackupScreen() {
   const [exportPasswordConfirmation, setExportPasswordConfirmation] = useState("");
   const [isExporting, setIsExporting] = useState(false);
 
+  // Modal state
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    description: string;
+  }>({
+    visible: false,
+    title: "",
+    description: "",
+  });
+
+  const showAlert = (title: string, description: string) => {
+    setAlertConfig({ visible: true, title, description });
+  };
+
   const handleExport = async () => {
     const password = exportPassword.trim();
 
     if (password.length < 8) {
-      Alert.alert("Senha fraca", "Defina uma senha com pelo menos 8 caracteres.");
+      showAlert("Senha fraca", "Defina uma senha com pelo menos 8 caracteres.");
       return;
     }
 
     if (password !== exportPasswordConfirmation.trim()) {
-      Alert.alert("Senhas diferentes", "A confirmação da senha não confere.");
+      showAlert("Senhas diferentes", "A confirmação da senha não confere.");
       return;
     }
 
@@ -47,7 +62,7 @@ export default function ExportBackupScreen() {
       const accounts = await getAccounts();
 
       if (accounts.length === 0) {
-        Alert.alert("Sem contas", "Adicione pelo menos uma conta antes de exportar.");
+        showAlert("Sem contas", "Adicione pelo menos uma conta antes de exportar.");
         return;
       }
 
@@ -65,13 +80,13 @@ export default function ExportBackupScreen() {
           mimeType: "application/json",
         });
       } else {
-        Alert.alert("Backup gerado", `Arquivo salvo em cache: ${file.uri}`);
+        showAlert("Backup gerado", `Arquivo salvo em cache: ${file.uri}`);
       }
 
       setExportPassword("");
       setExportPasswordConfirmation("");
     } catch {
-      Alert.alert("Erro", "Não foi possível gerar o backup criptografado.");
+      showAlert("Erro", "Não foi possível gerar o backup criptografado.");
     } finally {
       setIsExporting(false);
     }
@@ -156,6 +171,13 @@ export default function ExportBackupScreen() {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AlertModal
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        description={alertConfig.description}
+        onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+      />
     </View>
   );
 }

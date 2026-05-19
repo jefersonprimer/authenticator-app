@@ -10,7 +10,6 @@ import { useRouter } from "expo-router";
 import { File } from "expo-file-system";
 import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -20,6 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { AlertModal } from "@/components/AlertModal";
 
 import { backupModes, backupScreenStyles as styles, formatBackupDate } from "./backup-shared";
 
@@ -34,6 +34,21 @@ export default function ImportBackupScreen() {
   const [preview, setPreview] = useState<BackupPreview | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isPickingFile, setIsPickingFile] = useState(false);
+
+  // Modal state
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    description: string;
+  }>({
+    visible: false,
+    title: "",
+    description: "",
+  });
+
+  const showAlert = (title: string, description: string) => {
+    setAlertConfig({ visible: true, title, description });
+  };
 
   const resetSelection = () => {
     setSelectedFileName(null);
@@ -65,7 +80,7 @@ export default function ImportBackupScreen() {
       setPreview(nextPreview);
       setImportPassword("");
     } catch {
-      Alert.alert("Arquivo inválido", "Não foi possível ler esse backup.");
+      showAlert("Arquivo inválido", "Não foi possível ler esse backup.");
     } finally {
       setIsPickingFile(false);
     }
@@ -73,12 +88,12 @@ export default function ImportBackupScreen() {
 
   const handleImport = async () => {
     if (!selectedBackupText || !preview) {
-      Alert.alert("Selecione um arquivo", "Escolha um arquivo de backup antes de importar.");
+      showAlert("Selecione um arquivo", "Escolha um arquivo de backup antes de importar.");
       return;
     }
 
     if (preview.requiresPassword && !importPassword.trim()) {
-      Alert.alert("Senha necessária", "Digite a senha usada para criptografar o backup.");
+      showAlert("Senha necessária", "Digite a senha usada para criptografar o backup.");
       return;
     }
 
@@ -95,7 +110,7 @@ export default function ImportBackupScreen() {
 
       await saveAccounts(result.nextEntries);
 
-      Alert.alert(
+      showAlert(
         "Backup importado",
         [
           `${result.importedCount} conta(s) lida(s) do backup.`,
@@ -111,7 +126,7 @@ export default function ImportBackupScreen() {
         error instanceof Error && error.message === "BACKUP_PASSWORD_REQUIRED"
           ? "Digite a senha do backup para continuar."
           : "Não foi possível importar este backup. Verifique a senha e o arquivo selecionado.";
-      Alert.alert("Importação falhou", message);
+      showAlert("Importação falhou", message);
     } finally {
       setIsImporting(false);
     }
@@ -266,6 +281,13 @@ export default function ImportBackupScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AlertModal
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        description={alertConfig.description}
+        onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+      />
     </View>
   );
 }

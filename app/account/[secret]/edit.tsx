@@ -194,12 +194,13 @@ export default function EditAccountScreen() {
                 <Pressable
                   style={[
                     styles.saveButton,
+                    { backgroundColor: theme.tint },
                     isSaving && styles.saveButtonDisabled,
                   ]}
                   onPress={handleSave}
                   disabled={isSaving}
                 >
-                  <Text style={styles.saveButtonText}>
+                  <Text style={[styles.saveButtonText, { color: colorScheme === 'dark' ? '#000' : '#fff' }]}>
                     {isSaving ? "Salvando..." : "Salvar"}
                   </Text>
                 </Pressable>

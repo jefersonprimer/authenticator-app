@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,23 +12,43 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { validateOtpSecret } from "@/services/totp";
 import type { Account } from "@/storage/secureStore";
 import { getAccounts, saveAccounts } from "@/storage/secureStore";
 import { createOtpEntry, normalizeAlgorithm, normalizeDigits, normalizePeriod, normalizeSecret } from "@/utils/otp";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Colors } from "@/constants/theme";
+import { AlertModal } from "@/components/AlertModal";
 
 const normalize = (value?: string) => (value ?? "").trim().toLowerCase();
 
 export default function ManualEntryScreen() {
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
+
   const [issuer, setIssuer] = useState("");
   const [accountName, setAccountName] = useState("");
   const [secret, setSecret] = useState("");
-  const [algorithm, setAlgorithm] = useState("SHA1");
-  const [digits, setDigits] = useState("6");
-  const [period, setPeriod] = useState("30");
+  const [algorithm] = useState("SHA1");
+  const [digits] = useState("6");
+  const [period] = useState("30");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Modal state
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    description: string;
+  }>({
+    visible: false,
+    title: "",
+    description: "",
+  });
+
+  const showAlert = (title: string, description: string) => {
+    setAlertConfig({ visible: true, title, description });
+  };
 
   const handleSubmit = async () => {
     const normalizedSecret = normalizeSecret(secret);
@@ -37,7 +56,7 @@ export default function ManualEntryScreen() {
     const normalizedAccount = accountName.trim() || undefined;
 
     if (!normalizedSecret || !normalizedAccount) {
-      Alert.alert("Campos obrigatórios", "Preencha a conta/e-mail e a chave secreta.");
+      showAlert("Campos obrigatórios", "Preencha a conta/e-mail e a chave secreta.");
       return;
     }
 
@@ -53,7 +72,7 @@ export default function ManualEntryScreen() {
     try {
       validateOtpSecret(account);
     } catch {
-      Alert.alert("Dados inválidos", "Revise a chave secreta e os parâmetros do token.");
+      showAlert("Dados inválidos", "Revise a chave secreta. Ela deve estar no formato Base32 (letras e números).");
       return;
     }
 
@@ -68,7 +87,7 @@ export default function ManualEntryScreen() {
       );
 
       if (duplicatedAccount) {
-        Alert.alert("Conta existente", "Já existe uma conta com esse mesmo serviço e rótulo.");
+        showAlert("Conta existente", "Já existe uma conta com esse mesmo serviço e rótulo.");
         return;
       }
 
@@ -80,99 +99,78 @@ export default function ManualEntryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: theme.headerBackground,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.headerBorder,
+          },
+        ]}
+      >
+        <Pressable onPress={() => router.back()} style={styles.iconButton}>
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
+        </Pressable>
+        <Text style={[styles.title, { color: theme.text }]}>Adicionar manualmente</Text>
+        <View style={styles.iconSpacer} />
+      </View>
+
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.header}>
-            <Pressable onPress={() => router.back()} style={styles.iconButton}>
-              <Ionicons name="arrow-back" size={22} color="#111827" />
-            </Pressable>
-            <Text style={styles.title}>Adicionar manualmente</Text>
-            <View style={styles.iconSpacer} />
-          </View>
-
-          <View style={styles.formCard}>
-            <Text style={styles.label}>Serviço</Text>
+          <View style={[styles.formCard, { backgroundColor: theme.cardBackground, borderTopWidth: 1, borderTopColor: theme.headerBorder }]}>
+            <Text style={[styles.label, { color: theme.text }]}>Serviço</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.text, borderColor: theme.headerBorder, backgroundColor: colorScheme === 'dark' ? '#111827' : '#f9fafb' }]}
               value={issuer}
               onChangeText={setIssuer}
               placeholder="Ex: GitHub"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.icon}
             />
 
-            <Text style={styles.label}>Conta / e-mail</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Conta / e-mail</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.text, borderColor: theme.headerBorder, backgroundColor: colorScheme === 'dark' ? '#111827' : '#f9fafb' }]}
               value={accountName}
               onChangeText={setAccountName}
               placeholder="Ex: user@email.com"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.icon}
               autoCapitalize="none"
             />
 
-            <Text style={styles.label}>Chave secreta</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Chave secreta</Text>
             <TextInput
-              style={[styles.input, styles.secretInput]}
+              style={[styles.input, styles.secretInput, { color: theme.text, borderColor: theme.headerBorder, backgroundColor: colorScheme === 'dark' ? '#111827' : '#f9fafb' }]}
               value={secret}
               onChangeText={setSecret}
               placeholder="Cole a chave secreta"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.icon}
               autoCapitalize="characters"
               autoCorrect={false}
             />
 
-            <View style={styles.inlineRow}>
-              <View style={styles.inlineField}>
-                <Text style={styles.label}>Algoritmo</Text>
-                <TextInput
-                  style={styles.input}
-                  value={algorithm}
-                  onChangeText={setAlgorithm}
-                  placeholder="SHA1"
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                />
-              </View>
-              <View style={styles.inlineField}>
-                <Text style={styles.label}>Dígitos</Text>
-                <TextInput
-                  style={styles.input}
-                  value={digits}
-                  onChangeText={setDigits}
-                  placeholder="6"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="number-pad"
-                />
-              </View>
-              <View style={styles.inlineField}>
-                <Text style={styles.label}>Período</Text>
-                <TextInput
-                  style={styles.input}
-                  value={period}
-                  onChangeText={setPeriod}
-                  placeholder="30"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="number-pad"
-                />
-              </View>
-            </View>
-
             <TouchableOpacity
-              style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
+              style={[styles.submitButton, { backgroundColor: theme.tint }, isSaving && styles.submitButtonDisabled]}
               onPress={handleSubmit}
               disabled={isSaving}
             >
-              <Text style={styles.submitButtonText}>Concluir</Text>
+              <Text style={[styles.submitButtonText, { color: colorScheme === 'dark' ? '#000' : '#fff' }]}>Concluir</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+
+      <AlertModal
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        description={alertConfig.description}
+        onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+      />
+    </View>
   );
 }
 
@@ -182,20 +180,17 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    backgroundColor: "#f6f7fb",
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 24,
   },
   header: {
-    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    paddingTop: 60,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
   },
   iconButton: {
     width: 40,
@@ -203,7 +198,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ffffff",
   },
   iconSpacer: {
     width: 40,
@@ -211,58 +205,37 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#111827",
   },
   formCard: {
-    borderRadius: 20,
-    backgroundColor: "#ffffff",
+    flex: 1,
     padding: 20,
     gap: 12,
-    shadowColor: "#111827",
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
   },
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#374151",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#d1d5db",
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
     fontSize: 16,
-    color: "#111827",
-    backgroundColor: "#f9fafb",
   },
   secretInput: {
     letterSpacing: 1.1,
   },
-  inlineRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  inlineField: {
-    flex: 1,
-    gap: 8,
-  },
   submitButton: {
     marginTop: 8,
     borderRadius: 14,
-    backgroundColor: "#0a7ea4",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 15,
   },
   submitButtonDisabled: {
-    backgroundColor: "#8fb8c7",
+    opacity: 0.7,
   },
   submitButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "700",
   },
