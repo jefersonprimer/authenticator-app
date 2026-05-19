@@ -200,16 +200,29 @@ export default function AccountDetailScreen() {
               styles.hero,
               {
                 backgroundColor: theme.cardBackground,
-                borderColor: theme.headerBorder,
               },
             ]}
           >
-            <View style={styles.heroTopRow}>
-              <CompanyLogo
-                label={`${displayName} ${subtitle}`}
-                size={64}
-                dark={colorScheme === "dark"}
+            <View style={styles.heroDecoration}>
+              <Ionicons
+                name="shield-checkmark"
+                size={220}
+                color={
+                  colorScheme === "dark"
+                    ? "rgba(255, 255, 255, 0.03)"
+                    : "rgba(0, 0, 0, 0.02)"
+                }
               />
+            </View>
+
+            <View style={styles.heroTopRow}>
+              <View style={styles.logoContainer}>
+                <CompanyLogo
+                  label={`${displayName} ${subtitle}`}
+                  size={72}
+                  dark={colorScheme === "dark"}
+                />
+              </View>
               <View style={styles.heroTextContent}>
                 <Text style={[styles.heroTitle, { color: theme.text }]}>
                   {displayName}
@@ -220,12 +233,33 @@ export default function AccountDetailScreen() {
               </View>
             </View>
 
+            <View style={styles.divider} />
+
+            <View style={styles.infoContainer}>
+              <View style={styles.infoIconRow}>
+                <Ionicons
+                  name="key-outline"
+                  size={20}
+                  color={colorScheme === "dark" ? "#93C5FD" : "#0284C7"}
+                />
+                <Text style={[styles.infoTitle, { color: theme.text }]}>
+                  Segurança Ativa
+                </Text>
+              </View>
+              <Text style={[styles.infoDescription, { color: theme.icon }]}>
+                As senhas de uso único estão protegendo esta conta. Use o código
+                abaixo para suas verificações de acesso.
+              </Text>
+            </View>
+
             <Pressable
               style={[
                 styles.codeCard,
                 {
                   backgroundColor:
-                    colorScheme === "dark" ? "#101828" : "#eff6ff",
+                    colorScheme === "dark" ? "#111827" : "#F0F9FF",
+                  borderColor: colorScheme === "dark" ? "#1E293B" : "#E0F2FE",
+                  borderWidth: 1,
                 },
               ]}
               onPress={() => {
@@ -239,7 +273,7 @@ export default function AccountDetailScreen() {
                   <Text
                     style={[
                       styles.codeLabel,
-                      { color: colorScheme === "dark" ? "#93c5fd" : "#2563eb" },
+                      { color: colorScheme === "dark" ? "#93C5FD" : "#0284C7" },
                     ]}
                   >
                     Código de senha de uso único
@@ -247,7 +281,7 @@ export default function AccountDetailScreen() {
                   <Text
                     style={[
                       styles.codeValue,
-                      { color: isLowTime ? "#ef4444" : theme.text },
+                      { color: isLowTime ? "#EF4444" : theme.text },
                     ]}
                   >
                     {formattedToken}
@@ -270,10 +304,10 @@ export default function AccountDetailScreen() {
                                 {
                                   backgroundColor: isActive
                                     ? isLowTime
-                                      ? "#ef4444"
-                                      : "#2563eb"
+                                      ? "#EF4444"
+                                      : "#3B82F6"
                                     : colorScheme === "dark"
-                                      ? "#2C2C2E"
+                                      ? "#1E293B"
                                       : "#E5E7EB",
                                   transform: [
                                     { rotate: `${angle}deg` },
@@ -291,14 +325,14 @@ export default function AccountDetailScreen() {
                         styles.timerCenter,
                         {
                           backgroundColor:
-                            colorScheme === "dark" ? "#111827" : "#ffffff",
+                            colorScheme === "dark" ? "#101828" : "#F0F9FF",
                         },
                       ]}
                     >
                       <Text
                         style={[
                           styles.timerValue,
-                          { color: isLowTime ? "#ef4444" : theme.text },
+                          { color: isLowTime ? "#EF4444" : theme.text },
                         ]}
                       >
                         {timeLeft}
@@ -331,14 +365,36 @@ export default function AccountDetailScreen() {
             ]}
           >
             <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: theme.text }]}>
+                Opções da Conta
+              </Text>
+            </View>
             <Pressable style={styles.actionRow} onPress={openEditScreen}>
-              <Ionicons name="create-outline" size={20} color={theme.text} />
+              <View
+                style={[
+                  styles.actionIcon,
+                  {
+                    backgroundColor:
+                      colorScheme === "dark" ? "#27272A" : "#F4F4F5",
+                  },
+                ]}
+              >
+                <Ionicons name="create-outline" size={20} color={theme.text} />
+              </View>
               <Text style={[styles.actionText, { color: theme.text }]}>
                 Editar conta
               </Text>
             </Pressable>
             <Pressable style={styles.actionRow} onPress={handleRemoveAccount}>
-              <Ionicons name="trash-outline" size={20} color="#ef4444" />
+              <View
+                style={[
+                  styles.actionIcon,
+                  { backgroundColor: "#27272A", borderRadius: 12 },
+                ]}
+              >
+                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+              </View>
               <Text style={[styles.actionText, { color: "#ef4444" }]}>
                 Remover conta
               </Text>
@@ -401,25 +457,66 @@ const styles = StyleSheet.create({
   },
   hero: {
     flex: 1,
-    padding: 20,
+    padding: 24,
+    paddingTop: 32,
+    overflow: "hidden",
+  },
+  heroDecoration: {
+    position: "absolute",
+    top: -20,
+    right: -40,
+    zIndex: 0,
   },
   heroTopRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    marginBottom: 18,
+    marginBottom: 32,
+    zIndex: 1,
+  },
+  logoContainer: {
+    width: 84,
+    height: 84,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
   },
   heroTextContent: {
     flex: 1,
     justifyContent: "center",
   },
   heroTitle: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: "800",
   },
   heroSubtitle: {
     marginTop: 2,
+    fontSize: 16,
+    opacity: 0.8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(150, 150, 150, 0.1)",
+    marginBottom: 32,
+  },
+  infoContainer: {
+    marginBottom: 32,
+    zIndex: 1,
+  },
+  infoIconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 10,
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  infoDescription: {
     fontSize: 15,
+    lineHeight: 24,
+    opacity: 0.7,
   },
   timerSection: {
     alignItems: "center",
@@ -458,9 +555,14 @@ const styles = StyleSheet.create({
   },
   codeCard: {
     marginTop: 12,
-    borderRadius: 20,
-    paddingVertical: 18,
-    paddingHorizontal: 16,
+    borderRadius: 24,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   codeCardContent: {
     flexDirection: "row",
@@ -471,15 +573,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   codeLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    letterSpacing: 0.8,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    marginBottom: 4,
   },
   codeValue: {
-    marginTop: 4,
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: "800",
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
   modalRoot: {
     flex: 1,
@@ -498,20 +600,36 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 10,
   },
+  sheetHeader: {
+    paddingHorizontal: 18,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
   actionsCard: {
     width: "100%",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     borderTopWidth: 1,
-    paddingBottom: 34,
-    paddingHorizontal: 8,
+    paddingBottom: 40,
+    paddingHorizontal: 12,
   },
   actionRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  actionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionText: {
     fontSize: 16,

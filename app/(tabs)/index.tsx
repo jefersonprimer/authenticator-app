@@ -363,8 +363,6 @@ export default function HomeScreen() {
               styles.headerMenu,
               {
                 backgroundColor: theme.cardBackground,
-                borderColor: theme.headerBorder,
-                borderWidth: 1,
               },
             ]}
           >
