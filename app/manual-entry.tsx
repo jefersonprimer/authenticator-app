@@ -1,3 +1,16 @@
+import { AlertModal } from "@/components/AlertModal";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { validateOtpSecret } from "@/services/totp";
+import type { Account } from "@/storage/secureStore";
+import { getAccounts, saveAccounts } from "@/storage/secureStore";
+import {
+  createOtpEntry,
+  normalizeAlgorithm,
+  normalizeDigits,
+  normalizePeriod,
+  normalizeSecret,
+} from "@/utils/otp";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -12,13 +25,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { validateOtpSecret } from "@/services/totp";
-import type { Account } from "@/storage/secureStore";
-import { getAccounts, saveAccounts } from "@/storage/secureStore";
-import { createOtpEntry, normalizeAlgorithm, normalizeDigits, normalizePeriod, normalizeSecret } from "@/utils/otp";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Colors } from "@/constants/theme";
-import { AlertModal } from "@/components/AlertModal";
 
 const normalize = (value?: string) => (value ?? "").trim().toLowerCase();
 
@@ -26,6 +32,7 @@ export default function ManualEntryScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
+  const isDark = colorScheme === "dark";
 
   const [issuer, setIssuer] = useState("");
   const [accountName, setAccountName] = useState("");
@@ -56,7 +63,10 @@ export default function ManualEntryScreen() {
     const normalizedAccount = accountName.trim() || undefined;
 
     if (!normalizedSecret || !normalizedAccount) {
-      showAlert("Campos obrigatórios", "Preencha a conta/e-mail e a chave secreta.");
+      showAlert(
+        "Campos obrigatórios",
+        "Preencha a conta/e-mail e a chave secreta.",
+      );
       return;
     }
 
@@ -72,7 +82,10 @@ export default function ManualEntryScreen() {
     try {
       validateOtpSecret(account);
     } catch {
-      showAlert("Dados inválidos", "Revise a chave secreta. Ela deve estar no formato Base32 (letras e números).");
+      showAlert(
+        "Dados inválidos",
+        "Revise a chave secreta. Ela deve estar no formato Base32 (letras e números).",
+      );
       return;
     }
 
@@ -87,7 +100,10 @@ export default function ManualEntryScreen() {
       );
 
       if (duplicatedAccount) {
-        showAlert("Conta existente", "Já existe uma conta com esse mesmo serviço e rótulo.");
+        showAlert(
+          "Conta existente",
+          "Já existe uma conta com esse mesmo serviço e rótulo.",
+        );
         return;
       }
 
@@ -98,22 +114,26 @@ export default function ManualEntryScreen() {
     }
   };
 
+  // We use fixed black for the content area as requested, 
+  // but keep the header using the theme color.
+  const contentTextColor = "#fff"; // Always white on black background
+
   return (
-    <View style={[styles.screen, { backgroundColor: theme.background }]}>
+    <View style={styles.screen}>
       <View
         style={[
           styles.header,
           {
             backgroundColor: theme.headerBackground,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.headerBorder,
           },
         ]}
       >
         <Pressable onPress={() => router.back()} style={styles.iconButton}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Adicionar manualmente</Text>
+        <Text style={[styles.title, { color: theme.text }]}>
+          Adicionar manualmente
+        </Text>
         <View style={styles.iconSpacer} />
       </View>
 
@@ -121,44 +141,86 @@ export default function ManualEntryScreen() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={[styles.formCard, { backgroundColor: theme.cardBackground, borderTopWidth: 1, borderTopColor: theme.headerBorder }]}>
-            <Text style={[styles.label, { color: theme.text }]}>Serviço</Text>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.formCard}>
+            <Text style={[styles.label, { color: contentTextColor }]}>
+              Serviço
+            </Text>
             <TextInput
-              style={[styles.input, { color: theme.text, borderColor: theme.headerBorder, backgroundColor: colorScheme === 'dark' ? '#111827' : '#f9fafb' }]}
+              style={[
+                styles.input,
+                {
+                  color: contentTextColor,
+                  borderColor: isDark ? theme.headerBorder : "#333",
+                  backgroundColor: "#111827",
+                },
+              ]}
               value={issuer}
               onChangeText={setIssuer}
               placeholder="Ex: GitHub"
-              placeholderTextColor={theme.icon}
+              placeholderTextColor="#9BA1A6"
             />
 
-            <Text style={[styles.label, { color: theme.text }]}>Conta / e-mail</Text>
+            <Text style={[styles.label, { color: contentTextColor }]}>
+              Conta / e-mail
+            </Text>
             <TextInput
-              style={[styles.input, { color: theme.text, borderColor: theme.headerBorder, backgroundColor: colorScheme === 'dark' ? '#111827' : '#f9fafb' }]}
+              style={[
+                styles.input,
+                {
+                  color: contentTextColor,
+                  borderColor: isDark ? theme.headerBorder : "#333",
+                  backgroundColor: "#111827",
+                },
+              ]}
               value={accountName}
               onChangeText={setAccountName}
               placeholder="Ex: user@email.com"
-              placeholderTextColor={theme.icon}
+              placeholderTextColor="#9BA1A6"
               autoCapitalize="none"
             />
 
-            <Text style={[styles.label, { color: theme.text }]}>Chave secreta</Text>
+            <Text style={[styles.label, { color: contentTextColor }]}>
+              Chave secreta
+            </Text>
             <TextInput
-              style={[styles.input, styles.secretInput, { color: theme.text, borderColor: theme.headerBorder, backgroundColor: colorScheme === 'dark' ? '#111827' : '#f9fafb' }]}
+              style={[
+                styles.input,
+                styles.secretInput,
+                {
+                  color: contentTextColor,
+                  borderColor: isDark ? theme.headerBorder : "#333",
+                  backgroundColor: "#111827",
+                },
+              ]}
               value={secret}
               onChangeText={setSecret}
               placeholder="Cole a chave secreta"
-              placeholderTextColor={theme.icon}
+              placeholderTextColor="#9BA1A6"
               autoCapitalize="characters"
               autoCorrect={false}
             />
 
             <TouchableOpacity
-              style={[styles.submitButton, { backgroundColor: theme.tint }, isSaving && styles.submitButtonDisabled]}
+              style={[
+                styles.submitButton,
+                { backgroundColor: theme.tint },
+                isSaving && styles.submitButtonDisabled,
+              ]}
               onPress={handleSubmit}
               disabled={isSaving}
             >
-              <Text style={[styles.submitButtonText, { color: colorScheme === 'dark' ? '#000' : '#fff' }]}>Concluir</Text>
+              <Text
+                style={[
+                  styles.submitButtonText,
+                  { color: isDark ? "#000" : "#fff" },
+                ]}
+              >
+                Concluir
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -180,6 +242,7 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
+    backgroundColor: "#000",
   },
   content: {
     flexGrow: 1,
@@ -210,6 +273,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     gap: 12,
+    backgroundColor: "#000",
   },
   label: {
     fontSize: 14,

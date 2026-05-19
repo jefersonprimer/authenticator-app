@@ -1,12 +1,12 @@
+import { isAppLockEnabled, setAppLockEnabled } from "@/storage/secureStore";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Switch, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
-import { isAppLockEnabled, setAppLockEnabled } from "@/storage/secureStore";
+import { StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -42,21 +42,35 @@ export default function SettingsScreen() {
           styles.header,
           {
             backgroundColor: theme.headerBackground,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.headerBorder,
           },
         ]}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Configurações</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>
+          Configurações
+        </Text>
       </View>
 
       <View style={styles.content}>
-        <View style={[styles.settingItem, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, borderWidth: 1 }]}>
+        <View
+          style={[
+            styles.settingItem,
+            {
+              backgroundColor: theme.cardBackground,
+              borderColor: theme.cardBorder,
+              borderWidth: 1,
+            },
+          ]}
+        >
           <View style={styles.settingTextContainer}>
-            <Text style={[styles.settingTitle, { color: theme.text }]}>Bloqueio de aplicativo</Text>
+            <Text style={[styles.settingTitle, { color: theme.text }]}>
+              Bloqueio de aplicativo
+            </Text>
             <Text style={[styles.settingDescription, { color: theme.icon }]}>
               Solicita a senha do celular ao abrir o app.
             </Text>

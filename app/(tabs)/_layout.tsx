@@ -21,8 +21,6 @@ export default function TabLayout() {
         headerTintColor: theme.tint,
         headerStyle: {
           backgroundColor: theme.headerBackground,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.headerBorder,
           elevation: 0,
           shadowOpacity: 0,
         },
@@ -34,8 +32,6 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
         tabBarStyle: {
           backgroundColor: theme.headerBackground,
-          borderTopWidth: 1,
-          borderTopColor: theme.headerBorder,
           height: 60 + insets.bottom,
           paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 8,
