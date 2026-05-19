@@ -1,3 +1,4 @@
+import { AlertModal } from "@/components/AlertModal";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { Account } from "@/storage/secureStore";
@@ -9,7 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -31,6 +32,18 @@ export default function EditAccountScreen() {
   const [issuerInput, setIssuerInput] = useState("");
   const [accountInput, setAccountInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const saveLockRef = useRef(false);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: "",
+    description: "",
+  });
+
+  const normalize = (value?: string) => (value ?? "").trim().toLowerCase();
+
+  const showAlert = (title: string, description: string) => {
+    setAlertConfig({ visible: true, title, description });
+  };
 
   const loadAccount = useCallback(async () => {
     if (!secret) return;
@@ -56,17 +69,39 @@ export default function EditAccountScreen() {
   }, [account]);
 
   const handleSave = useCallback(async () => {
-    if (!account?.id || isSaving) return;
+    if (!account?.id || isSaving || saveLockRef.current) return;
+
+    const nextIssuer = issuerInput.trim() || undefined;
+    const nextAccount = accountInput.trim() || undefined;
+
+    saveLockRef.current = true;
 
     setIsSaving(true);
 
     try {
+      const accounts = await getAccounts();
+      const duplicatedAccount = accounts.some(
+        (item) =>
+          item.id !== account.id &&
+          normalize(item.issuer) === normalize(nextIssuer) &&
+          normalize(item.account) === normalize(nextAccount),
+      );
+
+      if (duplicatedAccount) {
+        showAlert(
+          "Conta existente",
+          "Ja existe outra conta com esse mesmo servico e rotulo.",
+        );
+        return;
+      }
+
       await updateAccount(account.id, {
-        issuer: issuerInput.trim() || undefined,
-        account: accountInput.trim() || undefined,
+        issuer: nextIssuer,
+        account: nextAccount,
       });
       router.back();
     } finally {
+      saveLockRef.current = false;
       setIsSaving(false);
     }
   }, [account, accountInput, isSaving, issuerInput, router]);
@@ -211,6 +246,14 @@ export default function EditAccountScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+      <AlertModal
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        description={alertConfig.description}
+        onClose={() =>
+          setAlertConfig((current) => ({ ...current, visible: false }))
+        }
+      />
     </View>
   );
 }

@@ -3,9 +3,10 @@ import { getAccounts, saveAccounts } from "@/storage/secureStore";
 import { createOtpEntry } from "@/utils/otp";
 import { parseOtpUri } from "@/utils/parseOtp";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Button,
   Modal,
@@ -29,18 +30,43 @@ export default function Scan() {
   const [pendingAccount, setPendingAccount] = useState<Account | null>(null);
   const [existingAccount, setExistingAccount] = useState<Account | null>(null);
   const [newAccountName, setNewAccountName] = useState("");
+  const [isProcessingScan, setIsProcessingScan] = useState(false);
+  const scanLockRef = useRef(false);
+  const isFocused = useIsFocused();
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
 
   const normalize = (value?: string) => (value ?? "").trim().toLowerCase();
 
-  const closeDuplicateModal = () => {
+  const resetDuplicateModalState = (unlockScanner = true) => {
     setIsDuplicateModalVisible(false);
     setPendingAccount(null);
     setExistingAccount(null);
     setNewAccountName("");
+
+    if (unlockScanner) {
+      scanLockRef.current = false;
+      setIsProcessingScan(false);
+    }
   };
+
+  const closeDuplicateModal = () => {
+    resetDuplicateModalState(true);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      scanLockRef.current = false;
+      setIsProcessingScan(false);
+      setIsDuplicateModalVisible(false);
+
+      return () => {
+        scanLockRef.current = false;
+        setIsProcessingScan(false);
+      };
+    }, []),
+  );
 
   const saveRenamedAccount = async () => {
     if (!pendingAccount) return;
@@ -55,7 +81,7 @@ export default function Scan() {
         account: nextName,
       },
     ]);
-    closeDuplicateModal();
+    resetDuplicateModalState(false);
     router.replace("/");
   };
 
@@ -111,41 +137,64 @@ export default function Scan() {
         </TouchableOpacity>
       </View>
 
-      <CameraView
-        style={styles.camera}
-        enableTorch={isTorchEnabled}
-        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-        onBarcodeScanned={async (result) => {
-          if (isDuplicateModalVisible) return;
+      {isFocused ? (
+        <CameraView
+          style={styles.camera}
+          enableTorch={isTorchEnabled}
+          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+          onBarcodeScanned={
+            isProcessingScan || isDuplicateModalVisible
+              ? undefined
+              : async (result) => {
+                  if (scanLockRef.current) return;
 
-          const data = parseOtpUri(result.data);
+                  scanLockRef.current = true;
+                  setIsProcessingScan(true);
+                  let shouldUnlockScanner = true;
 
-          if (!data) {
-            alert("QR code inválido. Escaneie um QR code de autenticação.");
-            return;
+                  try {
+                    const data = parseOtpUri(result.data);
+
+                    if (!data) {
+                      alert(
+                        "QR code inválido. Escaneie um QR code de autenticação.",
+                      );
+                      return;
+                    }
+
+                    const account: Account = createOtpEntry(data);
+
+                    const accounts = await getAccounts();
+                    const sameNameExists = accounts.find(
+                      (a) =>
+                        normalize(a.issuer) === normalize(account.issuer) &&
+                        normalize(a.account) === normalize(account.account),
+                    );
+
+                    if (sameNameExists) {
+                      setPendingAccount(account);
+                      setExistingAccount(sameNameExists);
+                      setNewAccountName(`${account.issuer || "Serviço"} 2`);
+                      setIsDuplicateModalVisible(true);
+                      shouldUnlockScanner = false;
+                      return;
+                    }
+
+                    await saveAccounts([...accounts, account]);
+                    shouldUnlockScanner = false;
+                    router.replace("/");
+                  } finally {
+                    if (shouldUnlockScanner) {
+                      scanLockRef.current = false;
+                      setIsProcessingScan(false);
+                    }
+                  }
+                }
           }
-
-          const account: Account = createOtpEntry(data);
-
-          const accounts = await getAccounts();
-          const sameNameExists = accounts.find(
-            (a) =>
-              normalize(a.issuer) === normalize(account.issuer) &&
-              normalize(a.account) === normalize(account.account),
-          );
-
-          if (sameNameExists) {
-            setPendingAccount(account);
-            setExistingAccount(sameNameExists);
-            setNewAccountName(`${account.issuer || "Serviço"} 2`);
-            setIsDuplicateModalVisible(true);
-            return;
-          }
-
-          await saveAccounts([...accounts, account]);
-          router.replace("/");
-        }}
-      />
+        />
+      ) : (
+        <View style={styles.camera} />
+      )}
 
       <SafeAreaView pointerEvents="box-none" style={styles.overlay}>
         <View pointerEvents="none" style={styles.scanArea}>
@@ -388,7 +437,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   saveButtonText: {
-    color: "#fff",
+    color: "#000",
     fontWeight: "600",
   },
 });

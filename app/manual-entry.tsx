@@ -13,7 +13,7 @@ import {
 } from "@/utils/otp";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -40,6 +40,7 @@ export default function ManualEntryScreen() {
   const [digits] = useState("6");
   const [period] = useState("30");
   const [isSaving, setIsSaving] = useState(false);
+  const submitLockRef = useRef(false);
 
   // Modal state
   const [alertConfig, setAlertConfig] = useState<{
@@ -57,6 +58,8 @@ export default function ManualEntryScreen() {
   };
 
   const handleSubmit = async () => {
+    if (submitLockRef.current || isSaving) return;
+
     const normalizedSecret = normalizeSecret(secret);
     const normalizedIssuer = issuer.trim() || undefined;
     const normalizedAccount = accountName.trim() || undefined;
@@ -88,6 +91,7 @@ export default function ManualEntryScreen() {
       return;
     }
 
+    submitLockRef.current = true;
     setIsSaving(true);
 
     try {
@@ -109,6 +113,7 @@ export default function ManualEntryScreen() {
       await saveAccounts([...accounts, account as Account]);
       router.replace("/");
     } finally {
+      submitLockRef.current = false;
       setIsSaving(false);
     }
   };

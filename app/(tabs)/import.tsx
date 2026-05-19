@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -46,6 +46,8 @@ export default function ImportBackupScreen() {
   const [isImportPasswordVisible, setIsImportPasswordVisible] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isPickingFile, setIsPickingFile] = useState(false);
+  const pickLockRef = useRef(false);
+  const importLockRef = useRef(false);
   const isBusy = isImporting || isPickingFile;
 
   // Modal state
@@ -72,6 +74,9 @@ export default function ImportBackupScreen() {
   };
 
   const handlePickBackup = async () => {
+    if (pickLockRef.current || isPickingFile) return;
+
+    pickLockRef.current = true;
     setIsPickingFile(true);
 
     try {
@@ -96,11 +101,14 @@ export default function ImportBackupScreen() {
     } catch {
       showAlert("Arquivo inválido", "Não foi possível ler esse backup.");
     } finally {
+      pickLockRef.current = false;
       setIsPickingFile(false);
     }
   };
 
   const handleImport = async () => {
+    if (importLockRef.current || isImporting) return;
+
     if (!selectedBackupText || !preview) {
       showAlert(
         "Selecione um arquivo",
@@ -117,6 +125,7 @@ export default function ImportBackupScreen() {
       return;
     }
 
+    importLockRef.current = true;
     setIsImporting(true);
 
     try {
@@ -148,6 +157,7 @@ export default function ImportBackupScreen() {
           : "Não foi possível importar este backup. Verifique a senha e o arquivo selecionado.";
       showAlert("Importação falhou", message);
     } finally {
+      importLockRef.current = false;
       setIsImporting(false);
     }
   };
