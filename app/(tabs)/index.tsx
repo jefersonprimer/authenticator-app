@@ -459,16 +459,15 @@ export default function HomeScreen() {
                       style={[
                         styles.copyCodeButton,
                         {
-                          backgroundColor:
-                            colorScheme === "dark" ? "#111827" : "#f8fafc",
-                          borderColor: theme.headerBorder,
+                          backgroundColor: theme.text,
+                          borderColor: theme.text,
                         },
                       ]}
                     >
                       <Ionicons
                         name="copy-outline"
                         size={18}
-                        color={theme.text}
+                        color={theme.background}
                       />
                     </TouchableOpacity>
                     <View style={styles.miniTimerWrap}>
