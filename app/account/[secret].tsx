@@ -1,13 +1,10 @@
 import { CompanyLogo } from "@/components/company-logo";
+import { DeleteAccountModal } from "@/components/DeleteAccountModal";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { generateToken } from "@/services/totp";
 import type { Account } from "@/storage/secureStore";
-import {
-  getAccounts,
-  removeAccount,
-  updateAccount,
-} from "@/storage/secureStore";
+import { getAccounts, removeAccount } from "@/storage/secureStore";
 import {
   getAccountDisplayName,
   getAccountSubtitle,
@@ -18,7 +15,6 @@ import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Animated,
   Easing,
   Modal,
@@ -26,7 +22,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 
@@ -46,9 +41,8 @@ export default function AccountDetailScreen() {
   const [token, setToken] = useState("");
   const [timeLeft, setTimeLeft] = useState(STEP);
   const [isActionsVisible, setIsActionsVisible] = useState(false);
-  const [isEditVisible, setIsEditVisible] = useState(false);
-  const [issuerInput, setIssuerInput] = useState("");
-  const [accountInput, setAccountInput] = useState("");
+  const [isRemoveVisible, setIsRemoveVisible] = useState(false);
+  const [isRemovingAccount, setIsRemovingAccount] = useState(false);
 
   const sheetTranslateY = useRef(new Animated.Value(400)).current;
 
@@ -76,22 +70,22 @@ export default function AccountDetailScreen() {
     animateSheet(400, () => setIsActionsVisible(false));
   };
 
-  const openEditModal = useCallback(() => {
-    if (!account) return;
-    setIssuerInput(account.issuer ?? "");
-    setAccountInput(account.account ?? "");
+  const openEditScreen = useCallback(() => {
+    if (!account?.id) return;
 
-    // Close actions with animation first
     animateSheet(400, () => {
       setIsActionsVisible(false);
-      setIsEditVisible(true);
-      animateSheet(0);
+      router.push({
+        pathname: "/account/[secret]/edit",
+        params: { secret: account.id },
+      });
     });
-  }, [account, animateSheet]);
+  }, [account, animateSheet, router]);
 
-  const closeEdit = useCallback(() => {
-    animateSheet(400, () => setIsEditVisible(false));
-  }, [animateSheet]);
+  const closeRemoveModal = useCallback(() => {
+    if (isRemovingAccount) return;
+    setIsRemoveVisible(false);
+  }, [isRemovingAccount]);
 
   const loadAccount = useCallback(async () => {
     if (!secret) return;
@@ -135,40 +129,28 @@ export default function AccountDetailScreen() {
   const isLowTime = timeLeft <= 10;
   const activeSegments = Math.max(0, Math.min(TIMER_SEGMENTS, timeLeft));
 
-  const handleSaveAccount = useCallback(async () => {
-    if (!account?.id) return;
-
-    await updateAccount(account.id, {
-      issuer: issuerInput.trim() || undefined,
-      account: accountInput.trim() || undefined,
-    });
-
-    closeEdit();
-    await loadAccount();
-  }, [account, accountInput, closeEdit, issuerInput, loadAccount]);
-
   const handleRemoveAccount = useCallback(() => {
     if (!account?.id) return;
 
     animateSheet(400, () => {
       setIsActionsVisible(false);
-      Alert.alert(
-        "Remover conta?",
-        "Essa conta será removida deste dispositivo.",
-        [
-          { text: "Cancelar", style: "cancel" },
-          {
-            text: "Remover",
-            style: "destructive",
-            onPress: async () => {
-              await removeAccount(account.id);
-              router.replace("/");
-            },
-          },
-        ],
-      );
+      setIsRemoveVisible(true);
     });
-  }, [account, animateSheet, router]);
+  }, [account, animateSheet]);
+
+  const confirmRemoveAccount = useCallback(async () => {
+    if (!account?.id || isRemovingAccount) return;
+
+    setIsRemovingAccount(true);
+
+    try {
+      await removeAccount(account.id);
+      setIsRemoveVisible(false);
+      router.replace("/");
+    } finally {
+      setIsRemovingAccount(false);
+    }
+  }, [account, isRemovingAccount, router]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -349,7 +331,7 @@ export default function AccountDetailScreen() {
             ]}
           >
             <View style={styles.sheetHandle} />
-            <Pressable style={styles.actionRow} onPress={openEditModal}>
+            <Pressable style={styles.actionRow} onPress={openEditScreen}>
               <Ionicons name="create-outline" size={20} color={theme.text} />
               <Text style={[styles.actionText, { color: theme.text }]}>
                 Editar conta
@@ -365,86 +347,14 @@ export default function AccountDetailScreen() {
         </View>
       </Modal>
 
-      <Modal
-        visible={isEditVisible}
-        transparent
-        animationType="none"
-        onRequestClose={closeEdit}
-      >
-        <View style={styles.modalRoot}>
-          <Pressable style={styles.modalOverlay} onPress={closeEdit} />
-          <Animated.View
-            style={[
-              styles.editCard,
-              {
-                backgroundColor: theme.cardBackground,
-                borderTopColor: theme.headerBorder,
-                transform: [{ translateY: sheetTranslateY }],
-              },
-            ]}
-          >
-            <View style={styles.sheetHandle} />
-            <Text style={[styles.editTitle, { color: theme.text }]}>
-              Editar conta
-            </Text>
-            <TextInput
-              value={issuerInput}
-              onChangeText={setIssuerInput}
-              placeholder="Nome da empresa"
-              placeholderTextColor={theme.icon}
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  borderColor: theme.headerBorder,
-                  backgroundColor:
-                    colorScheme === "dark" ? "#111827" : "#f8fafc",
-                },
-              ]}
-            />
-            <TextInput
-              value={accountInput}
-              onChangeText={setAccountInput}
-              placeholder="E-mail da conta"
-              placeholderTextColor={theme.icon}
-              autoCapitalize="none"
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  borderColor: theme.headerBorder,
-                  backgroundColor:
-                    colorScheme === "dark" ? "#111827" : "#f8fafc",
-                },
-              ]}
-            />
-            <View style={styles.editActions}>
-              <Pressable
-                style={[
-                  styles.secondaryButton,
-                  {
-                    backgroundColor:
-                      colorScheme === "dark" ? "#1f2937" : "#f3f4f6",
-                  },
-                ]}
-                onPress={closeEdit}
-              >
-                <Text
-                  style={[styles.secondaryButtonText, { color: theme.text }]}
-                >
-                  Cancelar
-                </Text>
-              </Pressable>
-              <Pressable
-                style={styles.primaryButton}
-                onPress={handleSaveAccount}
-              >
-                <Text style={styles.primaryButtonText}>Salvar</Text>
-              </Pressable>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
+      <DeleteAccountModal
+        visible={isRemoveVisible}
+        accountName={displayName}
+        accountSubtitle={subtitle}
+        isDeleting={isRemovingAccount}
+        onClose={closeRemoveModal}
+        onConfirm={confirmRemoveAccount}
+      />
     </View>
   );
 }
@@ -606,55 +516,5 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 16,
     fontWeight: "600",
-  },
-  editCard: {
-    width: "100%",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderTopWidth: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  editTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 16,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  editActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 8,
-  },
-  secondaryButton: {
-    flex: 1,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-  },
-  secondaryButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  primaryButton: {
-    flex: 1,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    backgroundColor: "#2563eb",
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "700",
   },
 });

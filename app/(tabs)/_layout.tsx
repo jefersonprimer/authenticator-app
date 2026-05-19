@@ -1,39 +1,41 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/haptic-tab";
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
+  const theme = Colors[colorScheme ?? "light"];
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+        tabBarActiveTintColor: theme.tint,
         tabBarInactiveTintColor: colorScheme === "dark" ? "#9BA1A6" : "#687076",
         headerShown: true,
+        headerTintColor: theme.tint,
         headerStyle: {
-          backgroundColor: Colors[colorScheme ?? "light"].headerBackground,
+          backgroundColor: theme.headerBackground,
           borderBottomWidth: 1,
-          borderBottomColor: Colors[colorScheme ?? "light"].headerBorder,
+          borderBottomColor: theme.headerBorder,
           elevation: 0,
           shadowOpacity: 0,
         },
         headerTitleStyle: {
-          color: Colors[colorScheme ?? "light"].text,
+          color: theme.text,
           fontSize: 18,
           fontWeight: "600",
         },
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: Colors[colorScheme ?? "light"].headerBackground,
+          backgroundColor: theme.headerBackground,
           borderTopWidth: 1,
-          borderTopColor: Colors[colorScheme ?? "light"].headerBorder,
+          borderTopColor: theme.headerBorder,
           height: 60 + insets.bottom,
           paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 8,
@@ -46,7 +48,9 @@ export default function TabLayout() {
         options={{
           title: "Contas",
           headerShown: false,
-          tabBarIcon: ({ color }) => <Ionicons size={24} name="key" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <Ionicons size={24} name="key" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -54,7 +58,9 @@ export default function TabLayout() {
         options={{
           title: "Escanear",
           headerShown: false,
-          tabBarIcon: ({ color }) => <Ionicons size={24} name="qr-code" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <Ionicons size={24} name="qr-code" color={color} />
+          ),
           tabBarStyle: { display: "none" },
         }}
       />
@@ -62,7 +68,27 @@ export default function TabLayout() {
         name="explore"
         options={{
           title: "Backup",
-          tabBarIcon: ({ color }) => <Ionicons size={24} name="cloud-upload" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <Ionicons size={24} name="cloud-upload" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="export"
+        options={{
+          headerShown: false,
+          title: "Exportar",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="import"
+        options={{
+          headerShown: false,
+          title: "Importar",
+          href: null,
+          tabBarStyle: { display: "none" },
         }}
       />
     </Tabs>

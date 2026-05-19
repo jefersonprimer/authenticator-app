@@ -1,4 +1,5 @@
 import { CompanyLogo } from "@/components/company-logo";
+import { DeleteAccountModal } from "@/components/DeleteAccountModal";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { generateToken } from "@/services/totp";
@@ -85,16 +86,11 @@ export default function HomeScreen() {
     }
   };
 
-  const handleDelete = async (accountId: string) => {
-    await removeAccount(accountId);
-    setAccountPendingDeletion(null);
-    load();
-  };
-
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [accountPendingDeletion, setAccountPendingDeletion] =
     useState<Account | null>(null);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const sheetTranslateY = useRef(new Animated.Value(300)).current;
 
   const isLowTime = timeLeft <= 10;
@@ -165,6 +161,20 @@ export default function HomeScreen() {
     }
     closeMenu();
   };
+
+  const handleDelete = useCallback(async () => {
+    if (!accountPendingDeletion?.id || isDeletingAccount) return;
+
+    setIsDeletingAccount(true);
+
+    try {
+      await removeAccount(accountPendingDeletion.id);
+      setAccountPendingDeletion(null);
+      await load();
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  }, [accountPendingDeletion, isDeletingAccount]);
 
   const panResponder = useMemo(
     () =>
@@ -348,7 +358,16 @@ export default function HomeScreen() {
             style={styles.headerMenuBackdrop}
             onPress={() => setIsHeaderMenuVisible(false)}
           />
-          <View style={[styles.headerMenu, { backgroundColor: theme.cardBackground, borderColor: theme.headerBorder, borderWidth: 1 }]}>
+          <View
+            style={[
+              styles.headerMenu,
+              {
+                backgroundColor: theme.cardBackground,
+                borderColor: theme.headerBorder,
+                borderWidth: 1,
+              },
+            ]}
+          >
             <TouchableOpacity
               style={styles.headerMenuItem}
               onPress={() => {
@@ -357,7 +376,9 @@ export default function HomeScreen() {
               }}
             >
               <Ionicons name="settings-outline" size={18} color={theme.text} />
-              <Text style={[styles.headerMenuText, { color: theme.text }]}>Configurações</Text>
+              <Text style={[styles.headerMenuText, { color: theme.text }]}>
+                Configurações
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerMenuItem}
@@ -366,8 +387,14 @@ export default function HomeScreen() {
                 Alert.alert("Ajuda", "Central de ajuda em breve.");
               }}
             >
-              <Ionicons name="help-circle-outline" size={18} color={theme.text} />
-              <Text style={[styles.headerMenuText, { color: theme.text }]}>Ajuda</Text>
+              <Ionicons
+                name="help-circle-outline"
+                size={18}
+                color={theme.text}
+              />
+              <Text style={[styles.headerMenuText, { color: theme.text }]}>
+                Ajuda
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerMenuItem}
@@ -721,70 +748,26 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      <Modal
+      <DeleteAccountModal
         visible={!!accountPendingDeletion}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setAccountPendingDeletion(null)}
-      >
-        <View style={styles.deleteModalRoot}>
-          <Pressable
-            style={styles.deleteModalOverlay}
-            onPress={() => setAccountPendingDeletion(null)}
-          />
-          <View
-            style={[
-              styles.deleteModalCard,
-              { backgroundColor: theme.cardBackground },
-            ]}
-          >
-            <View style={styles.deleteIconContainer}>
-              <Ionicons name="trash-outline" size={24} color="#ff3b30" />
-            </View>
-            <Text style={[styles.deleteModalTitle, { color: theme.text }]}>
-              Remover conta?
-            </Text>
-            <Text style={[styles.deleteModalSubtitle, { color: theme.icon }]}>
-              {accountPendingDeletion?.issuer ||
-                accountPendingDeletion?.account ||
-                "Conta"}
-            </Text>
-            <Text
-              style={[styles.deleteModalDescription, { color: theme.icon }]}
-            >
-              Esta conta de autenticação será removida do dispositivo. Tenha
-              certeza de que você possui um backup antes de continuar.
-            </Text>
-
-            <View style={styles.deleteModalActions}>
-              <TouchableOpacity
-                style={[
-                  styles.deleteCancelButton,
-                  {
-                    backgroundColor:
-                      colorScheme === "dark" ? "#2C2C2E" : "#F2F2F7",
-                  },
-                ]}
-                onPress={() => setAccountPendingDeletion(null)}
-              >
-                <Text style={[styles.deleteCancelText, { color: theme.text }]}>
-                  Cancelar
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteConfirmButton}
-                onPress={() =>
-                  accountPendingDeletion?.secret
-                    ? handleDelete(accountPendingDeletion.secret)
-                    : setAccountPendingDeletion(null)
-                }
-              >
-                <Text style={styles.deleteConfirmText}>Remover</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        accountName={
+          accountPendingDeletion
+            ? getAccountDisplayName(accountPendingDeletion)
+            : "Conta"
+        }
+        accountSubtitle={
+          accountPendingDeletion
+            ? getAccountSubtitle(accountPendingDeletion)
+            : undefined
+        }
+        isDeleting={isDeletingAccount}
+        onClose={() => {
+          if (!isDeletingAccount) {
+            setAccountPendingDeletion(null);
+          }
+        }}
+        onConfirm={handleDelete}
+      />
     </View>
   );
 }
@@ -1048,78 +1031,7 @@ const styles = StyleSheet.create({
     color: "#ff3b30",
     fontWeight: "600",
   },
-  deleteModalRoot: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-  },
-  deleteModalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-  },
-  deleteModalCard: {
-    width: "100%",
-    maxWidth: 340,
-    borderRadius: 24,
-    padding: 24,
-    alignItems: "center",
-  },
-  deleteIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#ffeceb",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  deleteModalTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  deleteModalSubtitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#374151",
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  deleteModalDescription: {
-    fontSize: 14,
-    color: "#6b7280",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  deleteModalActions: {
-    width: "100%",
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 18,
-  },
-  deleteCancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: "#f3f4f6",
-    alignItems: "center",
-  },
-  deleteCancelText: {
-    color: "#374151",
-    fontWeight: "600",
-  },
-  deleteConfirmButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: "#ff3b30",
-    alignItems: "center",
-  },
-  deleteConfirmText: {
-    color: "#fff",
-    fontWeight: "700",
-  },
+
   // Empty State Styles
   emptyContainer: {
     flex: 1,
