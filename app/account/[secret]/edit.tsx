@@ -24,8 +24,9 @@ import {
 export default function EditAccountScreen() {
   const { secret } = useLocalSearchParams<{ secret?: string }>();
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
+  const systemColorScheme = useColorScheme();
+  const systemTheme = Colors[systemColorScheme ?? "light"];
+  const theme = Colors.dark;
   const [account, setAccount] = useState<Account | null>(null);
   const [issuerInput, setIssuerInput] = useState("");
   const [accountInput, setAccountInput] = useState("");
@@ -74,20 +75,19 @@ export default function EditAccountScreen() {
   const subtitle = account ? getAccountSubtitle(account) : "";
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.background }]}>
+    <View style={[styles.screen, { backgroundColor: "#000" }]}>
       <View
         style={[
           styles.header,
           {
-            backgroundColor: theme.headerBackground,
-            borderBottomColor: theme.headerBorder,
+            backgroundColor: systemTheme.headerBackground,
           },
         ]}
       >
         <Pressable style={styles.headerButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <Ionicons name="arrow-back" size={24} color={systemTheme.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>
+        <Text style={[styles.headerTitle, { color: systemTheme.text }]}>
           Editar conta
         </Text>
         <View style={styles.headerSpacer} />
@@ -104,7 +104,7 @@ export default function EditAccountScreen() {
                 styles.emptyState,
                 {
                   backgroundColor: theme.cardBackground,
-                  borderColor: theme.headerBorder,
+                  borderColor: theme.cardBorder,
                 },
               ]}
             >
@@ -120,8 +120,8 @@ export default function EditAccountScreen() {
               style={[
                 styles.card,
                 {
-                  backgroundColor: theme.cardBackground,
-                  borderColor: theme.headerBorder,
+                  backgroundColor: "#000",
+                  borderColor: theme.cardBorder,
                 },
               ]}
             >
@@ -146,9 +146,8 @@ export default function EditAccountScreen() {
                   styles.input,
                   {
                     color: theme.text,
-                    borderColor: theme.headerBorder,
-                    backgroundColor:
-                      colorScheme === "dark" ? "#111827" : "#f8fafc",
+                    borderColor: theme.cardBorder,
+                    backgroundColor: theme.cardBackground,
                   },
                 ]}
               />
@@ -166,9 +165,8 @@ export default function EditAccountScreen() {
                   styles.input,
                   {
                     color: theme.text,
-                    borderColor: theme.headerBorder,
-                    backgroundColor:
-                      colorScheme === "dark" ? "#111827" : "#f8fafc",
+                    borderColor: theme.cardBorder,
+                    backgroundColor: theme.cardBackground,
                   },
                 ]}
               />
@@ -178,8 +176,7 @@ export default function EditAccountScreen() {
                   style={[
                     styles.cancelButton,
                     {
-                      backgroundColor:
-                        colorScheme === "dark" ? "#1f2937" : "#f3f4f6",
+                      backgroundColor: "#1f2937",
                     },
                   ]}
                   onPress={() => router.back()}
@@ -200,7 +197,12 @@ export default function EditAccountScreen() {
                   onPress={handleSave}
                   disabled={isSaving}
                 >
-                  <Text style={[styles.saveButtonText, { color: colorScheme === 'dark' ? '#000' : '#fff' }]}>
+                  <Text
+                    style={[
+                      styles.saveButtonText,
+                      { color: "#000" },
+                    ]}
+                  >
                     {isSaving ? "Salvando..." : "Salvar"}
                   </Text>
                 </Pressable>
@@ -227,7 +229,6 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 16,
     paddingBottom: 14,
-    borderBottomWidth: 1,
   },
   headerButton: {
     width: 40,
@@ -263,7 +264,6 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     width: "100%",
-    borderWidth: 1,
     padding: 20,
   },
   cardHeader: {

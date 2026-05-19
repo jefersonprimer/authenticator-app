@@ -1,22 +1,23 @@
-import { Ionicons } from "@expo/vector-icons";
+import { AlertModal } from "@/components/AlertModal";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { exportBackup, getAccounts } from "@/storage/secureStore";
-import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { File, Paths } from "expo-file-system";
+import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
-  Pressable,
 } from "react-native";
-import { AlertModal } from "@/components/AlertModal";
 
 import { backupScreenStyles as styles } from "./backup-shared";
 
@@ -25,8 +26,15 @@ export default function ExportBackupScreen() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
   const [exportPassword, setExportPassword] = useState("");
-  const [exportPasswordConfirmation, setExportPasswordConfirmation] = useState("");
+  const [exportPasswordConfirmation, setExportPasswordConfirmation] =
+    useState("");
+  const [isExportPasswordVisible, setIsExportPasswordVisible] = useState(false);
+  const [
+    isExportPasswordConfirmationVisible,
+    setIsExportPasswordConfirmationVisible,
+  ] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const isBusy = isExporting;
 
   // Modal state
   const [alertConfig, setAlertConfig] = useState<{
@@ -62,7 +70,10 @@ export default function ExportBackupScreen() {
       const accounts = await getAccounts();
 
       if (accounts.length === 0) {
-        showAlert("Sem contas", "Adicione pelo menos uma conta antes de exportar.");
+        showAlert(
+          "Sem contas",
+          "Adicione pelo menos uma conta antes de exportar.",
+        );
         return;
       }
 
@@ -99,78 +110,147 @@ export default function ExportBackupScreen() {
           styles.header,
           {
             backgroundColor: theme.headerBackground,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.headerBorder,
           },
         ]}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={[styles.backButton, isBusy && styles.buttonDisabled]}
+          onPress={() => router.back()}
+          disabled={isBusy}
+        >
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Exportar</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>
+          Exportar
+        </Text>
       </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboard}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={[styles.description, { color: theme.icon }]}>
-            Crie uma senha forte (mínimo 8 caracteres). Você precisará dela para restaurar seus
-            dados futuramente.
+            Crie uma senha forte (mínimo 8 caracteres). Você precisará dela para
+            restaurar seus dados futuramente.
           </Text>
 
           <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Senha do backup</Text>
-            <TextInput
-              value={exportPassword}
-              onChangeText={setExportPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              placeholder="No mínimo 8 caracteres"
-              placeholderTextColor="#9ca3af"
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.cardBackground,
-                  borderColor: theme.cardBorder,
-                },
-              ]}
-            />
+            <Text style={[styles.label, { color: theme.text }]}>
+              Senha do backup
+            </Text>
+            <View style={styles.passwordField}>
+              <TextInput
+                value={exportPassword}
+                onChangeText={setExportPassword}
+                secureTextEntry={!isExportPasswordVisible}
+                autoCapitalize="none"
+                editable={!isBusy}
+                placeholder="No mínimo 8 caracteres"
+                placeholderTextColor="#9ca3af"
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  {
+                    color: theme.text,
+                    backgroundColor: theme.cardBackground,
+                    borderColor: theme.cardBorder,
+                  },
+                ]}
+              />
+              <Pressable
+                style={styles.passwordToggle}
+                onPress={() =>
+                  setIsExportPasswordVisible((current) => !current)
+                }
+                disabled={isBusy}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name={
+                    isExportPasswordVisible ? "eye-off-outline" : "eye-outline"
+                  }
+                  size={22}
+                  color={theme.icon}
+                />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Confirmar senha</Text>
-            <TextInput
-              value={exportPasswordConfirmation}
-              onChangeText={setExportPasswordConfirmation}
-              secureTextEntry
-              autoCapitalize="none"
-              placeholder="Repita a senha"
-              placeholderTextColor="#9ca3af"
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.cardBackground,
-                  borderColor: theme.cardBorder,
-                },
-              ]}
-            />
+            <Text style={[styles.label, { color: theme.text }]}>
+              Confirmar senha
+            </Text>
+            <View style={styles.passwordField}>
+              <TextInput
+                value={exportPasswordConfirmation}
+                onChangeText={setExportPasswordConfirmation}
+                secureTextEntry={!isExportPasswordConfirmationVisible}
+                autoCapitalize="none"
+                editable={!isBusy}
+                placeholder="Repita a senha"
+                placeholderTextColor="#9ca3af"
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  {
+                    color: theme.text,
+                    backgroundColor: theme.cardBackground,
+                    borderColor: theme.cardBorder,
+                  },
+                ]}
+              />
+              <Pressable
+                style={styles.passwordToggle}
+                onPress={() =>
+                  setIsExportPasswordConfirmationVisible((current) => !current)
+                }
+                disabled={isBusy}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name={
+                    isExportPasswordConfirmationVisible
+                      ? "eye-off-outline"
+                      : "eye-outline"
+                  }
+                  size={22}
+                  color={theme.icon}
+                />
+              </Pressable>
+            </View>
           </View>
 
           <Pressable
-            style={[styles.primaryButton, isExporting && styles.buttonDisabled]}
-            disabled={isExporting}
+            style={[styles.primaryButton, isBusy && styles.buttonDisabled]}
+            disabled={isBusy}
             onPress={handleExport}
           >
-            <Text style={styles.primaryButtonText}>
-              {isExporting ? "Gerando..." : "Gerar arquivo criptografado"}
-            </Text>
+            <View style={styles.buttonContent}>
+              {isExporting && <ActivityIndicator size="small" color="#fff" />}
+              <Text style={styles.primaryButtonText}>
+                {isExporting ? "Gerando..." : "Gerar arquivo criptografado"}
+              </Text>
+            </View>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {isExporting && (
+        <View style={styles.processingOverlay}>
+          <View style={styles.processingContent}>
+            <Text style={styles.processingTitle}>Processando exportação</Text>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.processingDescription}>
+              Criptografando suas contas e preparando o arquivo para
+              compartilhamento. Isso pode levar alguns segundos.
+            </Text>
+          </View>
+        </View>
+      )}
 
       <AlertModal
         visible={alertConfig.visible}

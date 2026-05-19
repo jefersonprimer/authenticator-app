@@ -159,7 +159,6 @@ export default function AccountDetailScreen() {
           styles.header,
           {
             backgroundColor: theme.headerBackground,
-            borderBottomColor: theme.headerBorder,
           },
         ]}
       >
@@ -426,7 +425,6 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 16,
     paddingBottom: 14,
-    borderBottomWidth: 1,
   },
   headerButton: {
     width: 40,

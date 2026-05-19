@@ -74,6 +74,20 @@ export const backupScreenStyles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
   },
+  passwordField: {
+    position: "relative",
+    justifyContent: "center",
+  },
+  passwordInput: {
+    paddingRight: 52,
+  },
+  passwordToggle: {
+    position: "absolute",
+    right: 16,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   primaryButton: {
     borderRadius: 16,
     backgroundColor: "#0a7ea4",
@@ -81,6 +95,12 @@ export const backupScreenStyles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 16,
     marginTop: 8,
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
   },
   primaryButtonText: {
     color: "#fff",
@@ -166,5 +186,30 @@ export const backupScreenStyles = StyleSheet.create({
   resetButtonText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.78)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+  },
+  processingContent: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    maxWidth: 320,
+  },
+  processingTitle: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  processingDescription: {
+    color: "rgba(255, 255, 255, 0.82)",
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: "center",
   },
 });

@@ -123,8 +123,6 @@ export default function ManualEntryScreen() {
           styles.header,
           {
             backgroundColor: theme.headerBackground,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.headerBorder,
           },
         ]}
       >
@@ -145,7 +143,9 @@ export default function ManualEntryScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={[styles.formCard, { backgroundColor: theme.background }]}>
+          <View
+            style={[styles.formCard, { backgroundColor: theme.background }]}
+          >
             <Text style={[styles.label, { color: contentTextColor }]}>
               Serviço
             </Text>

@@ -1,16 +1,25 @@
+import type { Account } from "@/storage/secureStore";
+import { getAccounts, saveAccounts } from "@/storage/secureStore";
+import { createOtpEntry } from "@/utils/otp";
+import { parseOtpUri } from "@/utils/parseOtp";
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Button, Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  Button,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import type { Account } from "@/storage/secureStore";
-import { getAccounts, saveAccounts } from "@/storage/secureStore";
-import { parseOtpUri } from "@/utils/parseOtp";
-import { createOtpEntry } from "@/utils/otp";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function Scan() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -53,11 +62,18 @@ export default function Scan() {
   if (!permission?.granted) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <Text style={[styles.permissionText, { color: theme.text }]}>Permissão da câmera necessária</Text>
+        <Text style={[styles.permissionText, { color: theme.text }]}>
+          Permissão da câmera necessária
+        </Text>
         <View style={styles.permissionActions}>
           <Button title="Permitir" onPress={requestPermission} />
-          <Pressable onPress={() => router.push("/manual-entry")} style={styles.permissionManualButton}>
-            <Text style={styles.permissionManualText}>Inserir código manualmente</Text>
+          <Pressable
+            onPress={() => router.push("/manual-entry")}
+            style={styles.permissionManualButton}
+          >
+            <Text style={styles.permissionManualText}>
+              Inserir código manualmente
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -71,8 +87,6 @@ export default function Scan() {
           styles.header,
           {
             backgroundColor: theme.headerBackground,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.headerBorder,
           },
         ]}
       >
@@ -143,18 +157,16 @@ export default function Scan() {
             onPress={() => router.push("/manual-entry")}
             style={[
               styles.manualEntryButton,
-              { backgroundColor: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.3)" },
+              {
+                backgroundColor: "rgba(255,255,255,0.15)",
+                borderColor: "rgba(255,255,255,0.3)",
+              },
             ]}
           >
             <Text style={[styles.manualEntryText, { color: "#fff" }]}>
               Inserir código manualmente
             </Text>
           </Pressable>
-
-          <View style={styles.footerCenter}>
-            <Ionicons color="#fff" name="shield-checkmark-outline" size={16} />
-            <Text style={styles.footerText}>Protegido por Authenticator</Text>
-          </View>
         </View>
       </SafeAreaView>
 
@@ -165,9 +177,19 @@ export default function Scan() {
         onRequestClose={closeDuplicateModal}
       >
         <View style={styles.modalRoot}>
-          <Pressable style={styles.modalOverlay} onPress={closeDuplicateModal} />
-          <View style={[styles.modalCard, { backgroundColor: theme.cardBackground }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Escolha um nome diferente para sua nova conta</Text>
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={closeDuplicateModal}
+          />
+          <View
+            style={[
+              styles.modalCard,
+              { backgroundColor: theme.cardBackground },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Escolha um nome diferente para sua nova conta
+            </Text>
             <Text style={[styles.modalParagraph, { color: theme.icon }]}>
               {`Você tem uma conta do ${existingAccount?.issuer || "provedor"} existente para ${
                 existingAccount?.account || "conta"
@@ -175,7 +197,14 @@ export default function Scan() {
             </Text>
 
             <TextInput
-              style={[styles.modalInput, { color: theme.text, borderColor: theme.cardBorder, backgroundColor: colorScheme === 'dark' ? '#111' : '#f9f9f9' }]}
+              style={[
+                styles.modalInput,
+                {
+                  color: theme.text,
+                  borderColor: theme.cardBorder,
+                  backgroundColor: colorScheme === "dark" ? "#111" : "#f9f9f9",
+                },
+              ]}
               value={newAccountName}
               onChangeText={setNewAccountName}
               placeholder="Alterar conta / e-mail (ex: user@email.com)"
@@ -184,11 +213,26 @@ export default function Scan() {
             />
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.cancelButton, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#f3f4f6' }]} onPress={closeDuplicateModal}>
-                <Text style={[styles.cancelButtonText, { color: theme.text }]}>Cancelar</Text>
+              <TouchableOpacity
+                style={[
+                  styles.cancelButton,
+                  {
+                    backgroundColor:
+                      colorScheme === "dark" ? "#2C2C2E" : "#f3f4f6",
+                  },
+                ]}
+                onPress={closeDuplicateModal}
+              >
+                <Text style={[styles.cancelButtonText, { color: theme.text }]}>
+                  Cancelar
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveButton, !newAccountName.trim() && styles.saveButtonDisabled, { backgroundColor: theme.tint }]}
+                style={[
+                  styles.saveButton,
+                  !newAccountName.trim() && styles.saveButtonDisabled,
+                  { backgroundColor: theme.tint },
+                ]}
                 disabled={!newAccountName.trim()}
                 onPress={saveRenamedAccount}
               >
@@ -255,23 +299,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 80, // Offset for header
   },
-  footerCenter: {
-    alignSelf: "center",
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  footerText: {
-    color: "#fff",
-    fontSize: 12,
-  },
   bottomSection: {
     position: "absolute",
-    bottom: 40,
+    bottom: 80,
     left: 0,
     right: 0,
     alignItems: "center",

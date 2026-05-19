@@ -1,15 +1,21 @@
-import { Ionicons } from "@expo/vector-icons";
+import { AlertModal } from "@/components/AlertModal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { BackupPreview, ImportMode } from "@/services/backup";
 import { readBackupPreview } from "@/services/backup";
-import { getAccounts, importBackupFromString, saveAccounts } from "@/storage/secureStore";
+import {
+  getAccounts,
+  importBackupFromString,
+  saveAccounts,
+} from "@/storage/secureStore";
+import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
-import { useRouter } from "expo-router";
 import { File } from "expo-file-system";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,9 +25,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { AlertModal } from "@/components/AlertModal";
 
-import { backupModes, backupScreenStyles as styles, formatBackupDate } from "./backup-shared";
+import {
+  backupModes,
+  formatBackupDate,
+  backupScreenStyles as styles,
+} from "./backup-shared";
 
 export default function ImportBackupScreen() {
   const router = useRouter();
@@ -30,10 +39,14 @@ export default function ImportBackupScreen() {
   const [importPassword, setImportPassword] = useState("");
   const [selectedMode, setSelectedMode] = useState<ImportMode>("merge");
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const [selectedBackupText, setSelectedBackupText] = useState<string | null>(null);
+  const [selectedBackupText, setSelectedBackupText] = useState<string | null>(
+    null,
+  );
   const [preview, setPreview] = useState<BackupPreview | null>(null);
+  const [isImportPasswordVisible, setIsImportPasswordVisible] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isPickingFile, setIsPickingFile] = useState(false);
+  const isBusy = isImporting || isPickingFile;
 
   // Modal state
   const [alertConfig, setAlertConfig] = useState<{
@@ -55,6 +68,7 @@ export default function ImportBackupScreen() {
     setSelectedBackupText(null);
     setPreview(null);
     setImportPassword("");
+    setIsImportPasswordVisible(false);
   };
 
   const handlePickBackup = async () => {
@@ -88,12 +102,18 @@ export default function ImportBackupScreen() {
 
   const handleImport = async () => {
     if (!selectedBackupText || !preview) {
-      showAlert("Selecione um arquivo", "Escolha um arquivo de backup antes de importar.");
+      showAlert(
+        "Selecione um arquivo",
+        "Escolha um arquivo de backup antes de importar.",
+      );
       return;
     }
 
     if (preview.requiresPassword && !importPassword.trim()) {
-      showAlert("Senha necessária", "Digite a senha usada para criptografar o backup.");
+      showAlert(
+        "Senha necessária",
+        "Digite a senha usada para criptografar o backup.",
+      );
       return;
     }
 
@@ -139,36 +159,59 @@ export default function ImportBackupScreen() {
           styles.header,
           {
             backgroundColor: theme.headerBackground,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.headerBorder,
           },
         ]}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={[styles.backButton, isBusy && styles.buttonDisabled]}
+          onPress={() => router.back()}
+          disabled={isBusy}
+        >
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Importar</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>
+          Importar
+        </Text>
       </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboard}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           {!preview ? (
             <>
               <Text style={[styles.description, { color: theme.icon }]}>
-                Selecione um arquivo `.backup.json` exportado anteriormente por este aplicativo.
+                Selecione um arquivo `.backup.json` exportado anteriormente por
+                este aplicativo.
               </Text>
               <Pressable
-                style={[styles.secondaryButton, { borderColor: theme.cardBorder }]}
+                style={[
+                  styles.secondaryButton,
+                  { borderColor: theme.cardBorder },
+                  isBusy && styles.buttonDisabled,
+                ]}
                 onPress={handlePickBackup}
-                disabled={isPickingFile}
+                disabled={isBusy}
               >
-                <IconSymbol name="arrow.down.doc.fill" size={20} color={theme.text} />
-                <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
-                  {isPickingFile ? "Lendo..." : "Selecionar arquivo"}
-                </Text>
+                <IconSymbol
+                  name="arrow.down.doc.fill"
+                  size={20}
+                  color={theme.text}
+                />
+                <View style={styles.buttonContent}>
+                  {isPickingFile && (
+                    <ActivityIndicator size="small" color={theme.text} />
+                  )}
+                  <Text
+                    style={[styles.secondaryButtonText, { color: theme.text }]}
+                  >
+                    {isPickingFile ? "Lendo..." : "Selecionar arquivo"}
+                  </Text>
+                </View>
               </Pressable>
             </>
           ) : (
@@ -182,7 +225,9 @@ export default function ImportBackupScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.previewTitle, { color: theme.text }]}>{selectedFileName}</Text>
+                <Text style={[styles.previewTitle, { color: theme.text }]}>
+                  {selectedFileName}
+                </Text>
                 <View style={styles.previewMeta}>
                   <Text style={[styles.previewText, { color: theme.icon }]}>
                     {preview.entriesCount} contas •{" "}
@@ -196,27 +241,53 @@ export default function ImportBackupScreen() {
 
               {preview.requiresPassword && (
                 <View style={styles.formGroup}>
-                  <Text style={[styles.label, { color: theme.text }]}>Senha do backup</Text>
-                  <TextInput
-                    value={importPassword}
-                    onChangeText={setImportPassword}
-                    secureTextEntry
-                    autoCapitalize="none"
-                    placeholder="Digite a senha usada na exportação"
-                    placeholderTextColor="#9ca3af"
-                    style={[
-                      styles.input,
-                      {
-                        color: theme.text,
-                        backgroundColor: theme.cardBackground,
-                        borderColor: theme.cardBorder,
-                      },
-                    ]}
-                  />
+                  <Text style={[styles.label, { color: theme.text }]}>
+                    Senha do backup
+                  </Text>
+                  <View style={styles.passwordField}>
+                    <TextInput
+                      value={importPassword}
+                      onChangeText={setImportPassword}
+                      secureTextEntry={!isImportPasswordVisible}
+                      autoCapitalize="none"
+                      editable={!isBusy}
+                      placeholder="Digite a senha usada na exportação"
+                      placeholderTextColor="#9ca3af"
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        {
+                          color: theme.text,
+                          backgroundColor: theme.cardBackground,
+                          borderColor: theme.cardBorder,
+                        },
+                      ]}
+                    />
+                    <Pressable
+                      style={styles.passwordToggle}
+                      onPress={() =>
+                        setIsImportPasswordVisible((current) => !current)
+                      }
+                      disabled={isBusy}
+                      hitSlop={8}
+                    >
+                      <Ionicons
+                        name={
+                          isImportPasswordVisible
+                            ? "eye-off-outline"
+                            : "eye-outline"
+                        }
+                        size={22}
+                        color={theme.icon}
+                      />
+                    </Pressable>
+                  </View>
                 </View>
               )}
 
-              <Text style={[styles.label, { color: theme.text, marginTop: 10 }]}>
+              <Text
+                style={[styles.label, { color: theme.text, marginTop: 10 }]}
+              >
                 Modo de importação
               </Text>
               <View style={styles.modeList}>
@@ -226,8 +297,10 @@ export default function ImportBackupScreen() {
                     <Pressable
                       key={mode.value}
                       onPress={() => setSelectedMode(mode.value)}
+                      disabled={isBusy}
                       style={[
                         styles.modeCard,
+                        isBusy && styles.buttonDisabled,
                         {
                           borderColor: active ? theme.tint : theme.cardBorder,
                           backgroundColor: active
@@ -246,12 +319,21 @@ export default function ImportBackupScreen() {
                           ]}
                         >
                           {active && (
-                            <View style={[styles.radioInner, { backgroundColor: theme.tint }]} />
+                            <View
+                              style={[
+                                styles.radioInner,
+                                { backgroundColor: theme.tint },
+                              ]}
+                            />
                           )}
                         </View>
-                        <Text style={[styles.modeTitle, { color: theme.text }]}>{mode.title}</Text>
+                        <Text style={[styles.modeTitle, { color: theme.text }]}>
+                          {mode.title}
+                        </Text>
                       </View>
-                      <Text style={[styles.modeDescription, { color: theme.icon }]}>
+                      <Text
+                        style={[styles.modeDescription, { color: theme.icon }]}
+                      >
                         {mode.description}
                       </Text>
                     </Pressable>
@@ -267,12 +349,21 @@ export default function ImportBackupScreen() {
                 disabled={!selectedBackupText || isImporting}
                 onPress={handleImport}
               >
-                <Text style={styles.primaryButtonText}>
-                  {isImporting ? "Importando..." : "Confirmar Importação"}
-                </Text>
+                <View style={styles.buttonContent}>
+                  {isImporting && (
+                    <ActivityIndicator size="small" color="#fff" />
+                  )}
+                  <Text style={styles.primaryButtonText}>
+                    {isImporting ? "Importando..." : "Confirmar Importação"}
+                  </Text>
+                </View>
               </Pressable>
 
-              <Pressable style={styles.resetButton} onPress={resetSelection}>
+              <Pressable
+                style={[styles.resetButton, isBusy && styles.buttonDisabled]}
+                onPress={resetSelection}
+                disabled={isBusy}
+              >
                 <Text style={[styles.resetButtonText, { color: theme.icon }]}>
                   Escolher outro arquivo
                 </Text>
@@ -281,6 +372,32 @@ export default function ImportBackupScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {isPickingFile && (
+        <View style={styles.processingOverlay}>
+          <View style={styles.processingContent}>
+            <Text style={styles.processingTitle}>Carregando arquivo</Text>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.processingDescription}>
+              Lendo o backup selecionado para validar o conteúdo antes da
+              importação.
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {isImporting && (
+        <View style={styles.processingOverlay}>
+          <View style={styles.processingContent}>
+            <Text style={styles.processingTitle}>Processando importação</Text>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.processingDescription}>
+              Descriptografando o backup e aplicando as alterações nas contas
+              salvas. Isso pode levar alguns segundos.
+            </Text>
+          </View>
+        </View>
+      )}
 
       <AlertModal
         visible={alertConfig.visible}

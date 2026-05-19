@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -41,6 +42,7 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isHeaderMenuVisible, setIsHeaderMenuVisible] = useState(false);
   const [isShowingCodes, setIsShowingCodes] = useState(false);
+  const [isFabExpanded, setIsFabExpanded] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const router = useRouter();
 
@@ -194,8 +196,6 @@ export default function HomeScreen() {
           styles.header,
           {
             backgroundColor: theme.headerBackground,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.headerBorder,
           },
         ]}
       >
@@ -542,14 +542,95 @@ export default function HomeScreen() {
       />
 
       {!isSearching && (
-        <View style={styles.bottomActions}>
-          <Pressable
-            style={[styles.fabScan, { backgroundColor: theme.text }]}
-            onPress={() => router.push("/scan")}
-          >
-            <Ionicons name="qr-code" size={24} color={theme.background} />
-          </Pressable>
-        </View>
+        <>
+          {isFabExpanded && (
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setIsFabExpanded(false)}
+            />
+          )}
+          <View style={styles.fabContainer}>
+            {isFabExpanded && (
+              <View style={styles.fabOptions}>
+                <TouchableOpacity
+                  style={styles.fabOption}
+                  onPress={() => {
+                    setIsFabExpanded(false);
+                    router.push("/scan");
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.fabOptionLabel,
+                      {
+                        color: theme.text,
+                        backgroundColor:
+                          colorScheme === "dark" ? "#1C1C1E" : "#F2F2F7",
+                      },
+                    ]}
+                  >
+                    Fazer leitura de um QR code
+                  </Text>
+                  <View
+                    style={[
+                      styles.fabOptionIcon,
+                      { backgroundColor: theme.text },
+                    ]}
+                  >
+                    <Ionicons
+                      name="camera"
+                      size={20}
+                      color={theme.background}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.fabOption}
+                  onPress={() => {
+                    setIsFabExpanded(false);
+                    router.push("/manual-entry");
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.fabOptionLabel,
+                      {
+                        color: theme.text,
+                        backgroundColor:
+                          colorScheme === "dark" ? "#1C1C1E" : "#F2F2F7",
+                      },
+                    ]}
+                  >
+                    Inserir chave de configuração
+                  </Text>
+                  <View
+                    style={[
+                      styles.fabOptionIcon,
+                      { backgroundColor: theme.text },
+                    ]}
+                  >
+                    <Ionicons
+                      name="keypad"
+                      size={20}
+                      color={theme.background}
+                    />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+            <Pressable
+              style={[styles.fabMain, { backgroundColor: theme.text }]}
+              onPress={() => setIsFabExpanded(!isFabExpanded)}
+            >
+              <Ionicons
+                name={isFabExpanded ? "close" : "add"}
+                size={32}
+                color={theme.background}
+              />
+            </Pressable>
+          </View>
+        </>
       )}
 
       <DeleteAccountModal
@@ -857,12 +938,48 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
   },
-  bottomActions: {
+  fabContainer: {
     position: "absolute",
     bottom: 24,
     right: 24,
+    alignItems: "flex-end",
   },
-  fabScan: {
+  fabOptions: {
+    alignItems: "flex-end",
+    gap: 16,
+    marginBottom: 16,
+  },
+  fabOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  fabOptionLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  fabOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  fabMain: {
     width: 56,
     height: 56,
     borderRadius: 16,
