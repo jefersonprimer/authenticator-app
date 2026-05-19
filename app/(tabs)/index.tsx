@@ -16,12 +16,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  Animated,
-  Easing,
   FlatList,
-  Modal,
-  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -86,12 +81,9 @@ export default function HomeScreen() {
     }
   };
 
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [accountPendingDeletion, setAccountPendingDeletion] =
     useState<Account | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const sheetTranslateY = useRef(new Animated.Value(300)).current;
 
   const isLowTime = timeLeft <= 10;
   const progress = (timeLeft / STEP) * 100;
@@ -117,51 +109,6 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [isSearching]);
 
-  const openMenu = useCallback(
-    (account: Account) => {
-      setSelectedAccount(account);
-      setIsMenuVisible(true);
-      Animated.timing(sheetTranslateY, {
-        toValue: 0,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    },
-    [sheetTranslateY],
-  );
-
-  const closeMenu = useCallback(() => {
-    Animated.timing(sheetTranslateY, {
-      toValue: 300,
-      duration: 180,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) {
-        setIsMenuVisible(false);
-      }
-    });
-  }, [sheetTranslateY]);
-
-  const handleMenuOption = (option: string) => {
-    if (!selectedAccount) return;
-
-    switch (option) {
-      case "delete":
-        setAccountPendingDeletion(selectedAccount);
-        break;
-      // Other options will be implemented later
-      default:
-        Alert.alert(
-          "Em breve",
-          `A opção "${option}" será implementada em breve.`,
-        );
-        break;
-    }
-    closeMenu();
-  };
-
   const handleDelete = useCallback(async () => {
     if (!accountPendingDeletion?.id || isDeletingAccount) return;
 
@@ -175,41 +122,6 @@ export default function HomeScreen() {
       setIsDeletingAccount(false);
     }
   }, [accountPendingDeletion, isDeletingAccount]);
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gestureState) =>
-          Math.abs(gestureState.dy) > Math.abs(gestureState.dx) &&
-          gestureState.dy > 4,
-        onPanResponderMove: (_, gestureState) => {
-          const nextY = Math.max(0, gestureState.dy);
-          sheetTranslateY.setValue(nextY);
-        },
-        onPanResponderRelease: (_, gestureState) => {
-          const shouldClose = gestureState.dy > 90 || gestureState.vy > 1.15;
-          if (shouldClose) {
-            closeMenu();
-            return;
-          }
-          Animated.timing(sheetTranslateY, {
-            toValue: 0,
-            duration: 180,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }).start();
-        },
-        onPanResponderTerminate: () => {
-          Animated.timing(sheetTranslateY, {
-            toValue: 0,
-            duration: 180,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }).start();
-        },
-      }),
-    [closeMenu, sheetTranslateY],
-  );
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
@@ -517,19 +429,6 @@ export default function HomeScreen() {
                       color={theme.icon}
                     />
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={(event) => {
-                      event.stopPropagation();
-                      openMenu(item);
-                    }}
-                    style={styles.editButton}
-                  >
-                    <Ionicons
-                      name="ellipsis-horizontal"
-                      size={20}
-                      color={theme.icon}
-                    />
-                  </TouchableOpacity>
                 </View>
               </View>
               {isShowingCodes ? (
@@ -652,99 +551,6 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       )}
-
-      <Modal
-        visible={isMenuVisible}
-        transparent
-        animationType="none"
-        onRequestClose={closeMenu}
-      >
-        <View style={styles.modalRoot}>
-          <Pressable style={styles.modalOverlay} onPress={closeMenu} />
-          <Animated.View
-            style={[
-              styles.modalContent,
-              {
-                backgroundColor: theme.cardBackground,
-                transform: [{ translateY: sheetTranslateY }],
-              },
-            ]}
-            {...panResponder.panHandlers}
-          >
-            <View style={styles.sheetHandle} />
-            <View
-              style={[
-                styles.modalHeader,
-                { borderBottomColor: theme.headerBorder },
-              ]}
-            >
-              <Text style={[styles.modalTitle, { color: theme.text }]}>
-                Opções da Conta
-              </Text>
-              <Text style={[styles.modalSubtitle, { color: theme.icon }]}>
-                {selectedAccount?.issuer || selectedAccount?.account}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleMenuOption("edit")}
-            >
-              <Ionicons name="create-outline" size={24} color={theme.text} />
-              <Text style={[styles.menuText, { color: theme.text }]}>
-                Editar código 2FA
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleMenuOption("icon")}
-            >
-              <Ionicons name="image-outline" size={24} color={theme.text} />
-              <Text style={[styles.menuText, { color: theme.text }]}>
-                Alterar ícone de Serviço
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleMenuOption("move")}
-            >
-              <Ionicons name="folder-outline" size={24} color={theme.text} />
-              <Text style={[styles.menuText, { color: theme.text }]}>
-                Mover para pasta
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleMenuOption("export")}
-            >
-              <Ionicons name="share-outline" size={24} color={theme.text} />
-              <Text style={[styles.menuText, { color: theme.text }]}>
-                Exportar Código 2FA
-              </Text>
-            </TouchableOpacity>
-
-            <View
-              style={[
-                styles.menuDivider,
-                { backgroundColor: theme.headerBorder },
-              ]}
-            />
-
-            <TouchableOpacity
-              style={[styles.menuItem, styles.deleteItem]}
-              onPress={() => handleMenuOption("delete")}
-            >
-              <Ionicons name="trash-outline" size={24} color="#ff3b30" />
-              <Text style={[styles.menuText, styles.deleteText]}>
-                Excluir código
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </Modal>
 
       <DeleteAccountModal
         visible={!!accountPendingDeletion}
@@ -901,10 +707,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginLeft: 12,
   },
-  editButton: {
-    padding: 4,
-    marginLeft: 6,
-  },
   chevronButton: {
     width: 32,
     height: 32,
@@ -967,67 +769,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-  },
-  // Account options modal styles
-  modalRoot: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: "60%",
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-  },
-  sheetHandle: {
-    alignSelf: "center",
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(150, 150, 150, 0.3)",
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  modalHeader: {
-    paddingVertical: 16,
-    alignItems: "center",
-    borderBottomWidth: 1,
-    marginBottom: 8,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    marginTop: 4,
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    gap: 12,
-  },
-  menuText: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  menuDivider: {
-    height: 1,
-    marginVertical: 4,
-  },
-  deleteItem: {
-    marginTop: 4,
-  },
-  deleteText: {
-    color: "#ff3b30",
-    fontWeight: "600",
   },
 
   // Empty State Styles
