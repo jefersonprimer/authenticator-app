@@ -19,7 +19,7 @@ import {
   View,
 } from "react-native";
 
-import { backupScreenStyles as styles } from "./backup-shared";
+import { backupScreenStyles as styles } from "@/components/backup-shared";
 
 export default function ExportBackupScreen() {
   const router = useRouter();

@@ -11,9 +11,11 @@ import {
 
 type DeleteAccountModalProps = {
   visible: boolean;
+  accountName?: string;
+  accountSubtitle?: string;
   isDeleting?: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 };
 
 export function DeleteAccountModal({

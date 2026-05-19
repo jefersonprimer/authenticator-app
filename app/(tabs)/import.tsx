@@ -30,7 +30,7 @@ import {
   backupModes,
   formatBackupDate,
   backupScreenStyles as styles,
-} from "./backup-shared";
+} from "@/components/backup-shared";
 
 export default function ImportBackupScreen() {
   const router = useRouter();
