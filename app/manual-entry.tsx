@@ -32,7 +32,6 @@ export default function ManualEntryScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
-  const isDark = colorScheme === "dark";
 
   const [issuer, setIssuer] = useState("");
   const [accountName, setAccountName] = useState("");
@@ -114,17 +113,18 @@ export default function ManualEntryScreen() {
     }
   };
 
-  // We use fixed black for the content area as requested, 
-  // but keep the header using the theme color.
-  const contentTextColor = "#fff"; // Always white on black background
+  // We use the theme color for the content area to match the rest of the app.
+  const contentTextColor = theme.text;
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
       <View
         style={[
           styles.header,
           {
             backgroundColor: theme.headerBackground,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.headerBorder,
           },
         ]}
       >
@@ -145,7 +145,7 @@ export default function ManualEntryScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.formCard}>
+          <View style={[styles.formCard, { backgroundColor: theme.background }]}>
             <Text style={[styles.label, { color: contentTextColor }]}>
               Serviço
             </Text>
@@ -154,8 +154,8 @@ export default function ManualEntryScreen() {
                 styles.input,
                 {
                   color: contentTextColor,
-                  borderColor: isDark ? theme.headerBorder : "#333",
-                  backgroundColor: "#111827",
+                  borderColor: theme.cardBorder,
+                  backgroundColor: theme.cardBackground,
                 },
               ]}
               value={issuer}
@@ -172,8 +172,8 @@ export default function ManualEntryScreen() {
                 styles.input,
                 {
                   color: contentTextColor,
-                  borderColor: isDark ? theme.headerBorder : "#333",
-                  backgroundColor: "#111827",
+                  borderColor: theme.cardBorder,
+                  backgroundColor: theme.cardBackground,
                 },
               ]}
               value={accountName}
@@ -192,8 +192,8 @@ export default function ManualEntryScreen() {
                 styles.secretInput,
                 {
                   color: contentTextColor,
-                  borderColor: isDark ? theme.headerBorder : "#333",
-                  backgroundColor: "#111827",
+                  borderColor: theme.cardBorder,
+                  backgroundColor: theme.cardBackground,
                 },
               ]}
               value={secret}
@@ -216,7 +216,7 @@ export default function ManualEntryScreen() {
               <Text
                 style={[
                   styles.submitButtonText,
-                  { color: isDark ? "#000" : "#fff" },
+                  { color: colorScheme === "dark" ? "#000" : "#fff" },
                 ]}
               >
                 Concluir
@@ -242,7 +242,6 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    backgroundColor: "#000",
   },
   content: {
     flexGrow: 1,
@@ -273,7 +272,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     gap: 12,
-    backgroundColor: "#000",
   },
   label: {
     fontSize: 14,
