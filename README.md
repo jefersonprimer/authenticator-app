@@ -1,7 +1,7 @@
 # 🛡️ Authenticator
 
 <p align="center">
-  <img src="./assets/images/icon.png" width="128" height="128" />
+  <img src="./assets/images/icon.jpg" width="128" height="128" />
 </p>
 
 Uma solução de autenticação de dois fatores (2FA) moderna, segura e privada, construída com as tecnologias mais recentes do ecossistema **Expo** e **React Native**.
