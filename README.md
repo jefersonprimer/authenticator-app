@@ -21,7 +21,7 @@ Uma solução de autenticação de dois fatores (2FA) moderna, segura e privada,
 <p align="center">
   <img src="./assets/images/image-1.png" width="200" style="margin: 10px; border-radius: 20px" />
   <img src="./assets/images/image-2.png" width="200" style="margin: 10px; border-radius: 20px" />
-  <img src="./assets/images/image3.png" width="200" style="margin: 10px; border-radius: 20px" />
+  <img src="./assets/images/image-3.png" width="200" style="margin: 10px; border-radius: 20px" />
   <img src="./assets/images/image-4.png" width="200" style="margin: 10px; border-radius: 20px" />
 </p>
 
