@@ -25,6 +25,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const normalize = (value?: string) => (value ?? "").trim().toLowerCase();
 
@@ -32,6 +33,7 @@ export default function ManualEntryScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
+  const insets = useSafeAreaInsets();
 
   const [issuer, setIssuer] = useState("");
   const [accountName, setAccountName] = useState("");
@@ -128,11 +130,12 @@ export default function ManualEntryScreen() {
           styles.header,
           {
             backgroundColor: theme.headerBackground,
+            paddingTop: insets.top > 0 ? insets.top + 12 : 50,
           },
         ]}
       >
         <Pressable onPress={() => router.back()} style={styles.iconButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <Ionicons name="chevron-back-outline" size={24} color={theme.text} />
         </Pressable>
         <Text style={[styles.title, { color: theme.text }]}>
           Adicionar manualmente
@@ -255,9 +258,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 60,
     paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingBottom: 12,
   },
   iconButton: {
     width: 40,
@@ -270,8 +272,8 @@ const styles = StyleSheet.create({
     width: 40,
   },
   title: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "400",
   },
   formCard: {
     flex: 1,

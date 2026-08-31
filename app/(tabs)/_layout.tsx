@@ -32,10 +32,12 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
         tabBarStyle: {
           backgroundColor: theme.headerBackground,
+          borderTopWidth: 0,
           height: 60 + insets.bottom,
           paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 8,
           elevation: 0,
+          shadowOpacity: 0,
         },
       }}
     >
@@ -63,6 +65,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
+          headerShown: false,
           title: "Backup",
           tabBarIcon: ({ color }) => (
             <Ionicons size={24} name="cloud-upload" color={color} />

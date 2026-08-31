@@ -8,7 +8,6 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
-  Button,
   Modal,
   Pressable,
   StyleSheet,
@@ -17,7 +16,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -25,6 +27,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 export default function Scan() {
   const [permission, requestPermission] = useCameraPermissions();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [isTorchEnabled, setIsTorchEnabled] = useState(false);
   const [isDuplicateModalVisible, setIsDuplicateModalVisible] = useState(false);
   const [pendingAccount, setPendingAccount] = useState<Account | null>(null);
@@ -87,22 +90,68 @@ export default function Scan() {
 
   if (!permission?.granted) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <Text style={[styles.permissionText, { color: theme.text }]}>
-          Permissão da câmera necessária
-        </Text>
-        <View style={styles.permissionActions}>
-          <Button title="Permitir" onPress={requestPermission} />
-          <Pressable
-            onPress={() => router.push("/manual-entry")}
-            style={styles.permissionManualButton}
+      <SafeAreaView
+        style={[
+          styles.permissionContainer,
+          { backgroundColor: theme.background },
+        ]}
+      >
+        <View style={styles.permissionHeader}>
+          <TouchableOpacity
+            style={styles.permissionCloseButton}
+            onPress={() => router.replace("/")}
           >
-            <Text style={styles.permissionManualText}>
+            <Ionicons name="close" size={26} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.permissionContent}>
+          <View
+            style={[
+              styles.permissionIconContainer,
+              {
+                backgroundColor: colorScheme === "dark" ? "#1C1C1E" : "#E8F0FE",
+              },
+            ]}
+          >
+            <Ionicons name="camera" size={48} color="#0a7ea4" />
+          </View>
+
+          <Text style={[styles.permissionTitle, { color: theme.text }]}>
+            Permissão da Câmera
+          </Text>
+
+          <Text style={[styles.permissionDescription, { color: theme.icon }]}>
+            Para escanear o QR Code de autenticação e adicionar sua conta,
+            precisamos de permissão para acessar a câmera do seu dispositivo.
+          </Text>
+        </View>
+
+        <View style={styles.permissionActions}>
+          <TouchableOpacity
+            style={[styles.primaryButton, { backgroundColor: theme.tint }]}
+            onPress={requestPermission}
+          >
+            <Text
+              style={[
+                styles.primaryButtonText,
+                { color: colorScheme === "dark" ? "#000" : "#fff" },
+              ]}
+            >
+              Permitir Acesso
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => router.push("/manual-entry")}
+          >
+            <Text style={[styles.secondaryButtonText, { color: "#0a7ea4" }]}>
               Inserir código manualmente
             </Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -113,6 +162,7 @@ export default function Scan() {
           styles.header,
           {
             backgroundColor: theme.headerBackground,
+            paddingTop: insets.top > 0 ? insets.top + 12 : 50,
           },
         ]}
       >
@@ -120,7 +170,7 @@ export default function Scan() {
           style={styles.headerButton}
           onPress={() => router.replace("/")}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <Ionicons name="chevron-back-outline" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>
           Scan QR Code
@@ -296,30 +346,85 @@ export default function Scan() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  permissionContainer: {
+    flex: 1,
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  permissionHeader: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    paddingTop: 12,
+  },
+  permissionCloseButton: {
+    padding: 8,
+    borderRadius: 20,
+  },
+  permissionContent: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 24,
-    gap: 16,
+    paddingHorizontal: 12,
+    width: "100%",
   },
-  permissionText: {
-    fontSize: 16,
+  permissionIconContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 28,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  permissionTitle: {
+    fontSize: 24,
+    fontWeight: "700",
     textAlign: "center",
+    marginBottom: 12,
+    letterSpacing: -0.5,
+  },
+  permissionDescription: {
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+    paddingHorizontal: 16,
   },
   permissionActions: {
     width: "100%",
+    gap: 16,
+  },
+  primaryButton: {
+    width: "100%",
+    height: 52,
+    borderRadius: 26,
+    justifyContent: "center",
     alignItems: "center",
-    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  permissionManualButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "#eef6f9",
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
-  permissionManualText: {
-    color: "#0a7ea4",
+  secondaryButton: {
+    width: "100%",
+    height: 52,
+    borderRadius: 26,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  secondaryButtonText: {
+    fontSize: 16,
     fontWeight: "600",
   },
   camera: {
@@ -329,19 +434,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingBottom: 12,
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   headerButton: {
-    padding: 4,
+    padding: 6,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "400",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

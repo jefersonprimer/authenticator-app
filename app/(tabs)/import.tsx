@@ -20,11 +20,13 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   backupModes,
@@ -36,6 +38,7 @@ export default function ImportBackupScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
+  const insets = useSafeAreaInsets();
   const [importPassword, setImportPassword] = useState("");
   const [selectedMode, setSelectedMode] = useState<ImportMode>("merge");
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
@@ -166,22 +169,26 @@ export default function ImportBackupScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View
         style={[
-          styles.header,
+          localStyles.header,
           {
             backgroundColor: theme.headerBackground,
+            paddingTop: insets.top > 0 ? insets.top + 12 : 50,
           },
         ]}
       >
         <TouchableOpacity
-          style={[styles.backButton, isBusy && styles.buttonDisabled]}
+          style={[localStyles.backButton, isBusy && styles.buttonDisabled]}
           onPress={() => router.back()}
           disabled={isBusy}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <Ionicons name="chevron-back-outline" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>
-          Importar
-        </Text>
+        <View style={localStyles.titleContainer}>
+          <Text style={[localStyles.headerTitle, { color: theme.text }]}>
+            Importar
+          </Text>
+        </View>
+        <View style={localStyles.rightSpacer} />
       </View>
 
       <KeyboardAvoidingView
@@ -418,3 +425,30 @@ export default function ImportBackupScreen() {
     </View>
   );
 }
+
+const localStyles = StyleSheet.create({
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  backButton: {
+    padding: 6,
+    width: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rightSpacer: {
+    width: 36,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "400",
+  },
+});

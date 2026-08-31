@@ -209,7 +209,11 @@ export default function HomeScreen() {
                 setIsHeaderMenuVisible(false);
               }}
             >
-              <Ionicons name="arrow-back" size={24} color={theme.text} />
+              <Ionicons
+                name="chevron-back-outline"
+                size={24}
+                color={theme.text}
+              />
             </TouchableOpacity>
             <TextInput
               ref={searchInputRef}
@@ -241,13 +245,6 @@ export default function HomeScreen() {
                 }}
               >
                 <Ionicons name="search-outline" size={24} color={theme.text} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={() => router.push("/scan")}
-              >
-                <Ionicons name="add" size={30} color={theme.text} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -285,27 +282,12 @@ export default function HomeScreen() {
                 router.push("/settings");
               }}
             >
-              <Ionicons name="settings-outline" size={18} color={theme.text} />
+              <Ionicons name="settings-outline" size={20} color={theme.text} />
               <Text style={[styles.headerMenuText, { color: theme.text }]}>
                 Configurações
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerMenuItem}
-              onPress={() => {
-                setIsHeaderMenuVisible(false);
-                Alert.alert("Ajuda", "Central de ajuda em breve.");
-              }}
-            >
-              <Ionicons
-                name="help-circle-outline"
-                size={18}
-                color={theme.text}
-              />
-              <Text style={[styles.headerMenuText, { color: theme.text }]}>
-                Ajuda
-              </Text>
-            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.headerMenuItem}
               onPress={() => {
@@ -315,11 +297,28 @@ export default function HomeScreen() {
             >
               <Ionicons
                 name={isShowingCodes ? "eye-off-outline" : "eye-outline"}
-                size={18}
+                size={20}
                 color={theme.text}
               />
               <Text style={[styles.headerMenuText, { color: theme.text }]}>
                 {isShowingCodes ? "Ocultar códigos" : "Mostrar os códigos"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.headerMenuItem}
+              onPress={() => {
+                setIsHeaderMenuVisible(false);
+                Alert.alert("Ajuda", "Central de ajuda em breve.");
+              }}
+            >
+              <Ionicons
+                name="help-circle-outline"
+                size={20}
+                color={theme.text}
+              />
+              <Text style={[styles.headerMenuText, { color: theme.text }]}>
+                Ajuda
               </Text>
             </TouchableOpacity>
           </View>
@@ -577,7 +576,7 @@ export default function HomeScreen() {
                     ]}
                   >
                     <Ionicons
-                      name="camera"
+                      name="camera-outline"
                       size={20}
                       color={theme.background}
                     />
@@ -678,7 +677,7 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "400",
   },
   searchHeaderContainer: {
@@ -703,13 +702,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 90,
     right: 16,
-    borderRadius: 6,
-    minWidth: 170,
+    borderRadius: 12,
+    minWidth: 200,
     zIndex: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.16,
-    shadowRadius: 10,
     elevation: 8,
     overflow: "hidden",
   },
@@ -721,8 +716,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerMenuText: {
-    fontSize: 15,
-    fontWeight: "500",
+    fontSize: 16,
+    fontWeight: "400",
   },
   timerContainer: {
     paddingHorizontal: 16,

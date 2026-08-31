@@ -4,6 +4,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -13,6 +14,7 @@ export default function SettingsScreen() {
   const [appLockEnabled, setAppLockEnabledState] = useState(true);
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -42,6 +44,7 @@ export default function SettingsScreen() {
           styles.header,
           {
             backgroundColor: theme.headerBackground,
+            paddingTop: insets.top > 0 ? insets.top + 12 : 50,
           },
         ]}
       >
@@ -49,11 +52,14 @@ export default function SettingsScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <Ionicons name="chevron-back-outline" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>
-          Configurações
-        </Text>
+        <View style={styles.titleContainer}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            Configurações
+          </Text>
+        </View>
+        <View style={styles.rightSpacer} />
       </View>
 
       <View style={styles.content}>
@@ -92,19 +98,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 60,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   backButton: {
-    padding: 2,
+    padding: 6,
+    width: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rightSpacer: {
+    width: 36,
   },
   headerTitle: {
     fontSize: 22,
-    fontWeight: "600",
+    fontWeight: "400",
   },
   content: {
     padding: 16,

@@ -22,8 +22,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const STEP = 30;
 const TIMER_SIZE = 84;
@@ -37,6 +39,7 @@ export default function AccountDetailScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
+  const insets = useSafeAreaInsets();
   const [account, setAccount] = useState<Account | null>(null);
   const [token, setToken] = useState("");
   const [timeLeft, setTimeLeft] = useState(STEP);
@@ -159,18 +162,22 @@ export default function AccountDetailScreen() {
           styles.header,
           {
             backgroundColor: theme.headerBackground,
+            paddingTop: insets.top > 0 ? insets.top + 12 : 50,
           },
         ]}
       >
-        <Pressable style={styles.headerButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </Pressable>
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="chevron-back-outline" size={24} color={theme.text} />
+        </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>
           Detalhes
         </Text>
-        <Pressable style={styles.headerButton} onPress={openActions}>
-          <Ionicons name="settings-outline" size={22} color={theme.text} />
-        </Pressable>
+        <TouchableOpacity style={styles.headerButton} onPress={openActions}>
+          <Ionicons name="settings-outline" size={24} color={theme.text} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
@@ -365,6 +372,15 @@ export default function AccountDetailScreen() {
           >
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
+              <TouchableOpacity
+                style={[
+                  styles.sheetCloseButton,
+                  { borderColor: theme.headerBorder },
+                ]}
+                onPress={closeActions}
+              >
+                <Ionicons name="close-outline" size={24} color={theme.text} />
+              </TouchableOpacity>
               <Text style={[styles.sheetTitle, { color: theme.text }]}>
                 Opções da Conta
               </Text>
@@ -389,12 +405,15 @@ export default function AccountDetailScreen() {
               <View
                 style={[
                   styles.actionIcon,
-                  { backgroundColor: "#27272A", borderRadius: 12 },
+                  {
+                    backgroundColor:
+                      colorScheme === "dark" ? "#27272A" : "#F4F4F5",
+                  },
                 ]}
               >
-                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                <Ionicons name="trash-outline" size={20} color={theme.text} />
               </View>
-              <Text style={[styles.actionText, { color: "#ef4444" }]}>
+              <Text style={[styles.actionText, { color: theme.text }]}>
                 Remover conta
               </Text>
             </Pressable>
@@ -419,23 +438,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    paddingBottom: 12,
+    paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 60,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
   },
   headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
+    padding: 6,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "400",
   },
   content: {
     flexGrow: 1,
@@ -602,10 +616,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 8,
     paddingBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  sheetCloseButton: {
+    position: "absolute",
+    left: 18,
+    padding: 6,
+    borderWidth: 1,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
   },
   sheetTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "400",
   },
   actionsCard: {
     width: "100%",

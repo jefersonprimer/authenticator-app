@@ -102,15 +102,15 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 360,
-    borderRadius: 12,
+    borderRadius: 24,
     paddingHorizontal: 24,
     paddingVertical: 26,
     alignItems: "center",
     borderWidth: 1,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "800",
+    fontSize: 20,
+    fontWeight: "400",
     textAlign: "center",
   },
   subtitle: {
@@ -126,7 +126,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    lineHeight: 21,
     textAlign: "center",
     marginTop: 14,
   },

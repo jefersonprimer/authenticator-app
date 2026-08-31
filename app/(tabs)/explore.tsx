@@ -1,29 +1,63 @@
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function BackupScreen() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View
+        style={[
+          styles.customHeader,
+          {
+            backgroundColor: theme.headerBackground,
+            paddingTop: insets.top > 0 ? insets.top + 12 : 50,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => router.replace("/")}
+        >
+          <Ionicons name="chevron-back-outline" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Backup</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View
             style={[
               styles.iconCircle,
-              { backgroundColor: colorScheme === "dark" ? "#1f2937" : "#f1f5f9" },
+              {
+                backgroundColor: colorScheme === "dark" ? "#1f2937" : "#f1f5f9",
+              },
             ]}
           >
-            <IconSymbol name="shield.fill" size={32} color={theme.tint} />
+            <Ionicons name="shield-checkmark" size={32} color={theme.tint} />
           </View>
-          <Text style={[styles.heroTitle, { color: theme.text }]}>Segurança e Backup</Text>
+          <Text style={[styles.heroTitle, { color: theme.text }]}>
+            Segurança e Backup
+          </Text>
           <Text style={[styles.heroText, { color: theme.icon }]}>
-            Seus dados são criptografados localmente. O app não faz sincronização em nuvem para
-            garantir sua privacidade total.
+            Seus dados são criptografados localmente. O app não faz
+            sincronização em nuvem para garantir sua privacidade total.
           </Text>
         </View>
 
@@ -42,7 +76,9 @@ export default function BackupScreen() {
             <View style={[styles.actionIcon, { backgroundColor: "#e0f2fe" }]}>
               <IconSymbol name="arrow.up.doc.fill" size={24} color="#0369a1" />
             </View>
-            <Text style={[styles.actionTitle, { color: theme.text }]}>Exportar</Text>
+            <Text style={[styles.actionTitle, { color: theme.text }]}>
+              Exportar
+            </Text>
             <Text style={[styles.actionDescription, { color: theme.icon }]}>
               Criar um arquivo protegido por senha
             </Text>
@@ -60,9 +96,15 @@ export default function BackupScreen() {
             onPress={() => router.push("/import")}
           >
             <View style={[styles.actionIcon, { backgroundColor: "#f0fdf4" }]}>
-              <IconSymbol name="arrow.down.doc.fill" size={24} color="#15803d" />
+              <IconSymbol
+                name="arrow.down.doc.fill"
+                size={24}
+                color="#15803d"
+              />
             </View>
-            <Text style={[styles.actionTitle, { color: theme.text }]}>Importar</Text>
+            <Text style={[styles.actionTitle, { color: theme.text }]}>
+              Importar
+            </Text>
             <Text style={[styles.actionDescription, { color: theme.icon }]}>
               Restaurar de um arquivo .backup.json
             </Text>
@@ -71,12 +113,17 @@ export default function BackupScreen() {
 
         <View style={[styles.warningBox, { borderColor: theme.cardBorder }]}>
           <View style={styles.warningHeader}>
-            <IconSymbol name="exclamationmark.triangle.fill" size={20} color="#b45309" />
+            <IconSymbol
+              name="exclamationmark.triangle.fill"
+              size={20}
+              color="#b45309"
+            />
             <Text style={styles.warningTitle}>Aviso Importante</Text>
           </View>
           <Text style={styles.warningText}>
-            Se você perder o aparelho e não tiver um backup, suas contas 2FA podem ficar
-            inacessíveis permanentemente. Guarde seu backup em um local seguro.
+            Se você perder o aparelho e não tiver um backup, suas contas 2FA
+            podem ficar inacessíveis permanentemente. Guarde seu backup em um
+            local seguro.
           </Text>
         </View>
       </ScrollView>
@@ -87,6 +134,23 @@ export default function BackupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  customHeader: {
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerButton: {
+    padding: 6,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "400",
+  },
+  headerSpacer: {
+    width: 40,
   },
   scrollContent: {
     padding: 24,

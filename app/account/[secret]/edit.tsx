@@ -19,15 +19,17 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function EditAccountScreen() {
   const { secret } = useLocalSearchParams<{ secret?: string }>();
   const router = useRouter();
   const systemColorScheme = useColorScheme();
-  const systemTheme = Colors[systemColorScheme ?? "light"];
-  const theme = Colors.dark;
+  const theme = Colors[systemColorScheme ?? "light"];
+  const insets = useSafeAreaInsets();
   const [account, setAccount] = useState<Account | null>(null);
   const [issuerInput, setIssuerInput] = useState("");
   const [accountInput, setAccountInput] = useState("");
@@ -110,24 +112,30 @@ export default function EditAccountScreen() {
   const subtitle = account ? getAccountSubtitle(account) : "";
 
   return (
-    <View style={[styles.screen, { backgroundColor: "#000" }]}>
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
       <View
         style={[
           styles.header,
           {
-            backgroundColor: systemTheme.headerBackground,
+            backgroundColor: theme.headerBackground,
+            paddingTop: insets.top > 0 ? insets.top + 12 : 50,
           },
         ]}
       >
-        <Pressable style={styles.headerButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={systemTheme.text} />
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: systemTheme.text }]}>
-          Editar conta
-        </Text>
-        <View style={styles.headerSpacer} />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="chevron-back-outline" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <View style={styles.titleContainer}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            Editar conta
+          </Text>
+        </View>
+        <View style={styles.rightSpacer} />
       </View>
-
+ 
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -155,7 +163,7 @@ export default function EditAccountScreen() {
               style={[
                 styles.card,
                 {
-                  backgroundColor: "#000",
+                  backgroundColor: theme.background,
                   borderColor: theme.cardBorder,
                 },
               ]}
@@ -168,7 +176,7 @@ export default function EditAccountScreen() {
                   {subtitle}
                 </Text>
               </View>
-
+ 
               <Text style={[styles.label, { color: theme.text }]}>
                 Nome do servico
               </Text>
@@ -186,7 +194,7 @@ export default function EditAccountScreen() {
                   },
                 ]}
               />
-
+ 
               <Text style={[styles.label, { color: theme.text }]}>
                 Conta / e-mail
               </Text>
@@ -205,13 +213,13 @@ export default function EditAccountScreen() {
                   },
                 ]}
               />
-
+ 
               <View style={styles.actions}>
                 <Pressable
                   style={[
                     styles.cancelButton,
                     {
-                      backgroundColor: "#1f2937",
+                      backgroundColor: systemColorScheme === "dark" ? "#1f2937" : "#f3f4f6",
                     },
                   ]}
                   onPress={() => router.back()}
@@ -235,7 +243,7 @@ export default function EditAccountScreen() {
                   <Text
                     style={[
                       styles.saveButtonText,
-                      { color: "#000" },
+                      { color: systemColorScheme === "dark" ? "#000" : "#fff" },
                     ]}
                   >
                     {isSaving ? "Salvando..." : "Salvar"}
@@ -268,24 +276,26 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 60,
     paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingBottom: 12,
   },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  backButton: {
+    padding: 6,
+    width: 36,
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+  titleContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  headerSpacer: {
-    width: 40,
+  rightSpacer: {
+    width: 36,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "400",
   },
   content: {
     flexGrow: 1,
