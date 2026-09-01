@@ -63,7 +63,11 @@ export default function HomeScreen() {
 
       const nextTokens: Record<string, string> = {};
       accounts.forEach((item) => {
-        nextTokens[item.id] = generateToken(item);
+        try {
+          nextTokens[item.id] = generateToken(item);
+        } catch {
+          nextTokens[item.id] = "";
+        }
       });
       setTokens(nextTokens);
     };

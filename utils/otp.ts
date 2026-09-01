@@ -4,6 +4,7 @@ import {
   OTP_DEFAULT_DIGITS,
   OTP_DEFAULT_PERIOD,
 } from "@/types/otp";
+import { parseOtpUri } from "@/utils/parseOtp";
 import { randomUUID } from "expo-crypto";
 
 const normalizeOptionalText = (value?: string | null) => {
@@ -11,7 +12,8 @@ const normalizeOptionalText = (value?: string | null) => {
   return trimmed ? trimmed : undefined;
 };
 
-export const normalizeSecret = (value: string) => value.replace(/\s+/g, "").toUpperCase();
+export const normalizeSecret = (value: string) =>
+  value.replace(/[\s-]+/g, "").toUpperCase();
 
 export const normalizeAlgorithm = (value?: string | null): OtpAlgorithm => {
   const normalized = value?.trim().toUpperCase();
@@ -52,21 +54,120 @@ export const createOtpEntry = (input: OtpEntryInput): OtpEntry => {
 };
 
 export const normalizeOtpEntries = (entries: unknown): OtpEntry[] => {
-  if (!Array.isArray(entries)) return [];
+  const list = Array.isArray(entries)
+    ? entries
+    : entries && typeof entries === "object"
+      ? [entries]
+      : [];
 
-  return entries
+  return list
     .map((entry) => {
-      if (!entry || typeof entry !== "object" || !("secret" in entry)) {
+      if (!entry) return null;
+
+      if (typeof entry === "string" && entry.startsWith("otpauth://")) {
+        const parsed = parseOtpUri(entry);
+        if (parsed) {
+          return createOtpEntry(parsed);
+        }
+      }
+
+      if (typeof entry !== "object") {
         return null;
       }
 
-      const maybeEntry = entry as OtpEntryInput;
+      const maybeEntry = entry as Record<string, any>;
+      const info = maybeEntry.info && typeof maybeEntry.info === "object" ? maybeEntry.info : {};
+      const otp = maybeEntry.otp && typeof maybeEntry.otp === "object" ? maybeEntry.otp : {};
+      const login = maybeEntry.login && typeof maybeEntry.login === "object" ? maybeEntry.login : {};
 
-      if (typeof maybeEntry.secret !== "string" || !maybeEntry.secret.trim()) {
-        return null;
+      const uriCandidate =
+        typeof maybeEntry.uri === "string"
+          ? maybeEntry.uri
+          : typeof login.totp === "string"
+            ? login.totp
+            : typeof maybeEntry.totp === "string" && maybeEntry.totp.startsWith("otpauth://")
+              ? maybeEntry.totp
+              : undefined;
+
+      if (uriCandidate && uriCandidate.startsWith("otpauth://")) {
+        const parsed = parseOtpUri(uriCandidate);
+        if (parsed) {
+          return createOtpEntry({
+            ...parsed,
+            id: typeof maybeEntry.id === "string" ? maybeEntry.id : undefined,
+            icon: typeof maybeEntry.icon === "string" ? maybeEntry.icon : undefined,
+            createdAt: typeof maybeEntry.createdAt === "number" ? maybeEntry.createdAt : undefined,
+            updatedAt: typeof maybeEntry.updatedAt === "number" ? maybeEntry.updatedAt : undefined,
+          });
+        }
       }
 
-      return createOtpEntry(maybeEntry);
+      const secretCandidate =
+        typeof maybeEntry.secret === "string"
+          ? maybeEntry.secret
+          : typeof info.secret === "string"
+            ? info.secret
+            : typeof otp.secret === "string"
+              ? otp.secret
+              : typeof maybeEntry.secretKey === "string"
+                ? maybeEntry.secretKey
+                : typeof maybeEntry.key === "string"
+                  ? maybeEntry.key
+                  : typeof maybeEntry.token === "string"
+                    ? maybeEntry.token
+                    : typeof maybeEntry.totp === "string" && !maybeEntry.totp.startsWith("otpauth://")
+                      ? maybeEntry.totp
+                      : undefined;
+
+      if (secretCandidate && secretCandidate.trim()) {
+        const issuerCandidate =
+          typeof maybeEntry.issuer === "string"
+            ? maybeEntry.issuer
+            : typeof maybeEntry.name === "string" && (maybeEntry.account || otp.account || login.username)
+              ? maybeEntry.name
+              : undefined;
+
+        const accountCandidate =
+          typeof maybeEntry.account === "string"
+            ? maybeEntry.account
+            : typeof otp.account === "string"
+              ? otp.account
+              : typeof login.username === "string"
+                ? login.username
+                : typeof maybeEntry.label === "string"
+                  ? maybeEntry.label
+                  : typeof maybeEntry.name === "string"
+                    ? maybeEntry.name
+                    : undefined;
+
+        const algorithmCandidate =
+          maybeEntry.algorithm ?? info.algo ?? info.algorithm ?? otp.algorithm;
+        const digitsCandidate =
+          maybeEntry.digits ?? info.digits ?? otp.digits;
+        const periodCandidate =
+          maybeEntry.period ?? info.period ?? otp.period;
+
+        return createOtpEntry({
+          id: typeof maybeEntry.id === "string" ? maybeEntry.id : undefined,
+          issuer: issuerCandidate,
+          account: accountCandidate,
+          secret: secretCandidate,
+          algorithm: typeof algorithmCandidate === "string" ? (algorithmCandidate as any) : undefined,
+          digits:
+            typeof digitsCandidate === "number" || typeof digitsCandidate === "string"
+              ? (digitsCandidate as any)
+              : undefined,
+          period:
+            typeof periodCandidate === "number" || typeof periodCandidate === "string"
+              ? (periodCandidate as any)
+              : undefined,
+          icon: typeof maybeEntry.icon === "string" ? maybeEntry.icon : undefined,
+          createdAt: typeof maybeEntry.createdAt === "number" ? maybeEntry.createdAt : undefined,
+          updatedAt: typeof maybeEntry.updatedAt === "number" ? maybeEntry.updatedAt : undefined,
+        });
+      }
+
+      return null;
     })
     .filter((entry): entry is OtpEntry => entry !== null);
 };

@@ -2,10 +2,9 @@ import { AlertModal } from "@/components/AlertModal";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { exportBackup, getAccounts } from "@/storage/secureStore";
+import { exportAndShareFile } from "@/utils/file-helpers";
 import { Ionicons } from "@expo/vector-icons";
-import { File, Paths } from "expo-file-system";
 import { useRouter } from "expo-router";
-import * as Sharing from "expo-sharing";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -44,14 +43,19 @@ export default function ExportBackupScreen() {
     visible: boolean;
     title: string;
     description: string;
+    onDismiss?: () => void;
   }>({
     visible: false,
     title: "",
     description: "",
   });
 
-  const showAlert = (title: string, description: string) => {
-    setAlertConfig({ visible: true, title, description });
+  const showAlert = (
+    title: string,
+    description: string,
+    onDismiss?: () => void,
+  ) => {
+    setAlertConfig({ visible: true, title, description, onDismiss });
   };
 
   const handleExport = async () => {
@@ -82,25 +86,25 @@ export default function ExportBackupScreen() {
 
       const backupJson = await exportBackup(password);
       const filename = `authenticator-backup-${new Date().toISOString().slice(0, 10)}.backup.json`;
-      const file = new File(Paths.cache, filename);
 
-      file.create({ overwrite: true });
-      file.write(backupJson);
-
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(file.uri, {
-          dialogTitle: "Exportar backup criptografado",
-          mimeType: "application/json",
-        });
-      } else {
-        showAlert("Backup gerado", `Arquivo salvo em cache: ${file.uri}`);
-      }
+      await exportAndShareFile(filename, backupJson);
 
       setExportPassword("");
       setExportPasswordConfirmation("");
-    } catch {
-      showAlert("Erro", "Não foi possível gerar o backup criptografado.");
+
+      showAlert(
+        "Backup exportado",
+        "O arquivo de backup criptografado foi gerado com sucesso. Guarde o arquivo e a senha em um local seguro!",
+        () => {
+          router.back();
+        },
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message === "BACKUP_PASSWORD_TOO_SHORT"
+          ? "A senha do backup deve ter no mínimo 8 caracteres."
+          : "Não foi possível gerar o backup criptografado. Tente novamente.";
+      showAlert("Erro na exportação", message);
     } finally {
       setIsExporting(false);
     }
@@ -263,7 +267,17 @@ export default function ExportBackupScreen() {
         visible={alertConfig.visible}
         title={alertConfig.title}
         description={alertConfig.description}
-        onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+        onClose={() => {
+          const onDismiss = alertConfig.onDismiss;
+          setAlertConfig({
+            ...alertConfig,
+            visible: false,
+            onDismiss: undefined,
+          });
+          if (onDismiss) {
+            onDismiss();
+          }
+        }}
       />
     </View>
   );

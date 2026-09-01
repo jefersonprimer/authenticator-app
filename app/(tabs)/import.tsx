@@ -9,9 +9,9 @@ import {
   importBackupFromString,
   saveAccounts,
 } from "@/storage/secureStore";
+import { readAssetAsText } from "@/utils/file-helpers";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
-import { File } from "expo-file-system";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
@@ -58,14 +58,19 @@ export default function ImportBackupScreen() {
     visible: boolean;
     title: string;
     description: string;
+    onDismiss?: () => void;
   }>({
     visible: false,
     title: "",
     description: "",
   });
 
-  const showAlert = (title: string, description: string) => {
-    setAlertConfig({ visible: true, title, description });
+  const showAlert = (
+    title: string,
+    description: string,
+    onDismiss?: () => void,
+  ) => {
+    setAlertConfig({ visible: true, title, description, onDismiss });
   };
 
   const resetSelection = () => {
@@ -85,24 +90,29 @@ export default function ImportBackupScreen() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         copyToCacheDirectory: true,
-        type: ["application/json", "text/plain", "*/*"],
+        type: ["*/*", "application/json", "text/plain", "application/octet-stream"],
       });
 
-      if (result.canceled || !result.assets.length) {
+      if (result.canceled || !result.assets || !result.assets.length) {
         return;
       }
 
       const asset = result.assets[0];
-      const file = new File(asset.uri);
-      const rawText = await file.text();
+      const rawText = await readAssetAsText(asset);
       const nextPreview = readBackupPreview(rawText);
 
       setSelectedFileName(asset.name);
       setSelectedBackupText(rawText);
       setPreview(nextPreview);
       setImportPassword("");
-    } catch {
-      showAlert("Arquivo inválido", "Não foi possível ler esse backup.");
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message === "EMPTY_BACKUP_FILE"
+          ? "O arquivo selecionado está vazio."
+          : error instanceof Error && error.message === "INVALID_BACKUP_FILE"
+            ? "O formato deste arquivo não é reconhecido como um backup válido."
+            : "Não foi possível ler o arquivo selecionado. Verifique se o arquivo está acessível.";
+      showAlert("Arquivo inválido", message);
     } finally {
       pickLockRef.current = false;
       setIsPickingFile(false);
@@ -142,22 +152,46 @@ export default function ImportBackupScreen() {
 
       await saveAccounts(result.nextEntries);
 
-      showAlert(
-        "Backup importado",
-        [
-          `${result.importedCount} conta(s) lida(s) do backup.`,
-          `${result.addedCount} adicionada(s).`,
-          `${result.updatedCount} atualizada(s).`,
-          `${result.skippedCount} ignorada(s).`,
-        ].join(" "),
-      );
+      let descriptionMessage = "";
+      if (result.importedCount === 0) {
+        descriptionMessage =
+          "Nenhuma conta válida foi encontrada no arquivo de backup.";
+      } else if (
+        result.addedCount === 0 &&
+        result.updatedCount === 0 &&
+        result.skippedCount > 0
+      ) {
+        descriptionMessage = `${result.skippedCount} conta(s) encontrada(s) no backup, mas todas já existiam na sua lista. Se você deseja sobrescrever suas contas, escolha a opção "Substituir tudo".`;
+      } else {
+        const parts: string[] = [];
+        if (result.addedCount > 0) parts.push(`${result.addedCount} nova(s)`);
+        if (result.updatedCount > 0)
+          parts.push(`${result.updatedCount} atualizada(s)`);
+        if (result.skippedCount > 0)
+          parts.push(`${result.skippedCount} já existente(s)`);
+        descriptionMessage = `Backup importado com sucesso (${parts.join(", ")}).`;
+      }
 
-      resetSelection();
+      showAlert(
+        result.addedCount > 0 || result.updatedCount > 0
+          ? "Contas carregadas com sucesso"
+          : "Importação concluída",
+        descriptionMessage,
+        () => {
+          resetSelection();
+          router.replace("/");
+        },
+      );
     } catch (error) {
       const message =
         error instanceof Error && error.message === "BACKUP_PASSWORD_REQUIRED"
           ? "Digite a senha do backup para continuar."
-          : "Não foi possível importar este backup. Verifique a senha e o arquivo selecionado.";
+          : error instanceof Error &&
+              error.message === "INVALID_BACKUP_PASSWORD"
+            ? "Senha incorreta. Verifique a senha e tente novamente."
+            : error instanceof Error && error.message === "INVALID_BACKUP_FILE"
+              ? "O conteúdo do backup está corrompido ou em formato inválido."
+              : "Não foi possível importar este backup. Verifique a senha e tente novamente.";
       showAlert("Importação falhou", message);
     } finally {
       importLockRef.current = false;
@@ -420,7 +454,17 @@ export default function ImportBackupScreen() {
         visible={alertConfig.visible}
         title={alertConfig.title}
         description={alertConfig.description}
-        onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+        onClose={() => {
+          const onDismiss = alertConfig.onDismiss;
+          setAlertConfig({
+            ...alertConfig,
+            visible: false,
+            onDismiss: undefined,
+          });
+          if (onDismiss) {
+            onDismiss();
+          }
+        }}
       />
     </View>
   );

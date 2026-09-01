@@ -89,7 +89,7 @@ export default function RootLayout() {
       style={{ flex: 1, backgroundColor: theme.headerBackground }}
     >
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        {isUnlocked ? (
+        <View style={{ flex: 1 }}>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen
@@ -103,9 +103,19 @@ export default function RootLayout() {
             <Stack.Screen name="manual-entry" options={{ headerShown: false }} />
             <Stack.Screen name="settings" options={{ headerShown: false }} />
           </Stack>
-        ) : (
-          <View style={{ flex: 1, backgroundColor: theme.headerBackground }} />
-        )}
+          {!isUnlocked && (
+            <View
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: theme.headerBackground,
+              }}
+            />
+          )}
+        </View>
         <StatusBar style="auto" />
       </ThemeProvider>
     </GestureHandlerRootView>

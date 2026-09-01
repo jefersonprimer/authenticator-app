@@ -12,16 +12,27 @@ const toOtpLibAlgorithm = (algorithm: OtpAlgorithm): "sha1" | "sha256" | "sha512
 type TokenConfig = Pick<OtpEntry, "secret" | "algorithm" | "digits" | "period">;
 
 export const generateToken = ({ secret, algorithm, digits, period }: TokenConfig) => {
-  return generateSync({
-    secret,
-    algorithm: toOtpLibAlgorithm(algorithm),
-    digits: digits as OtpDigits,
-    period,
-    crypto,
-    base32,
-  });
+  try {
+    return generateSync({
+      secret,
+      algorithm: toOtpLibAlgorithm(algorithm),
+      digits: digits as OtpDigits,
+      period,
+      crypto,
+      base32,
+    });
+  } catch {
+    return "";
+  }
 };
 
 export const validateOtpSecret = (config: TokenConfig) => {
-  generateToken(config);
+  generateSync({
+    secret: config.secret,
+    algorithm: toOtpLibAlgorithm(config.algorithm),
+    digits: config.digits as OtpDigits,
+    period: config.period,
+    crypto,
+    base32,
+  });
 };

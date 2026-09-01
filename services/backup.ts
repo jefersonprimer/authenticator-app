@@ -10,7 +10,7 @@ import { createOtpEntry, getOtpEntryFingerprint, getOtpEntryIdentityKey, normali
 
 const BACKUP_FORMAT = "authenticator-backup";
 const BACKUP_VERSION = 1;
-const PBKDF2_ITERATIONS = 210_000;
+const PBKDF2_ITERATIONS = 50_000;
 const SALT_BYTES = 16;
 const NONCE_BYTES = 12;
 const KEY_BYTES = 32;
@@ -71,6 +71,11 @@ export type BackupImportResult = {
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
+export const sanitizeBackupText = (raw: string): string => {
+  if (typeof raw !== "string") return "";
+  return raw.replace(/^\uFEFF/, "").trim();
+};
+
 const isBackupEnvelope = (value: unknown): value is BackupEnvelope => {
   if (!value || typeof value !== "object") return false;
 
@@ -103,30 +108,66 @@ const normalizeImportedEntries = (entries: unknown) => {
 
 const parseLegacyBackup = (value: unknown): { entries: OtpEntry[]; createdAt?: number } | null => {
   if (Array.isArray(value)) {
-    return { entries: normalizeImportedEntries(value) };
+    const list = normalizeImportedEntries(value);
+    return list.length > 0 ? { entries: list } : null;
   }
 
   if (!value || typeof value !== "object") {
     return null;
   }
 
-  const maybeObject = value as { createdAt?: number; entries?: unknown };
+  const maybeObject = value as {
+    createdAt?: number;
+    exportedAt?: number;
+    entries?: unknown;
+    accounts?: unknown;
+    tokens?: unknown;
+    data?: unknown;
+    services?: unknown;
+    items?: unknown;
+    db?: { entries?: unknown };
+    vault?: { entries?: unknown };
+  };
 
-  if (Array.isArray(maybeObject.entries)) {
-    return {
-      entries: normalizeImportedEntries(maybeObject.entries),
-      createdAt: typeof maybeObject.createdAt === "number" ? maybeObject.createdAt : undefined,
-    };
+  const rawList =
+    maybeObject.entries ??
+    maybeObject.accounts ??
+    maybeObject.tokens ??
+    maybeObject.data ??
+    maybeObject.services ??
+    maybeObject.items ??
+    maybeObject.db?.entries ??
+    maybeObject.vault?.entries;
+
+  if (Array.isArray(rawList)) {
+    const createdAt =
+      typeof maybeObject.createdAt === "number"
+        ? maybeObject.createdAt
+        : typeof maybeObject.exportedAt === "number"
+          ? maybeObject.exportedAt
+          : undefined;
+
+    const list = normalizeImportedEntries(rawList);
+    return list.length > 0 ? { entries: list, createdAt } : null;
+  }
+
+  const single = normalizeImportedEntries([value]);
+  if (single.length > 0) {
+    return { entries: single };
   }
 
   return null;
 };
 
-const deriveEncryptionKey = async (password: string, salt: Uint8Array) => {
+const deriveEncryptionKey = async (
+  password: string,
+  salt: Uint8Array,
+  iterations = PBKDF2_ITERATIONS,
+) => {
   return pbkdf2Async(sha256, password, salt, {
-    c: PBKDF2_ITERATIONS,
+    c: iterations > 0 ? iterations : PBKDF2_ITERATIONS,
     dkLen: KEY_BYTES,
-    asyncTick: 10,
+    asyncTick: 500,
   });
 };
 
@@ -134,11 +175,18 @@ const decryptEnvelope = async (envelope: BackupEnvelope, password: string) => {
   const salt = hexToBytes(envelope.kdf.saltHex);
   const nonce = hexToBytes(envelope.encryption.nonceHex);
   const ciphertext = hexToBytes(envelope.ciphertextHex);
-  const key = await deriveEncryptionKey(password, salt);
+  const iterations = envelope.kdf?.iterations || PBKDF2_ITERATIONS;
+  const key = await deriveEncryptionKey(password, salt, iterations);
 
   try {
     const plaintext = gcm(key, nonce).decrypt(ciphertext);
-    return JSON.parse(textDecoder.decode(plaintext)) as BackupPayload;
+    const decoded = textDecoder.decode(plaintext);
+    return JSON.parse(decoded) as BackupPayload;
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new Error("INVALID_BACKUP_FILE");
+    }
+    throw new Error("INVALID_BACKUP_PASSWORD");
   } finally {
     clean(key);
   }
@@ -233,7 +281,7 @@ export const createEncryptedBackup = async (entries: OtpEntry[], password: strin
   const plaintext = textEncoder.encode(JSON.stringify(payload));
   const salt = Crypto.getRandomBytes(SALT_BYTES);
   const nonce = Crypto.getRandomBytes(NONCE_BYTES);
-  const key = await deriveEncryptionKey(trimmedPassword, salt);
+  const key = await deriveEncryptionKey(trimmedPassword, salt, PBKDF2_ITERATIONS);
 
   try {
     const ciphertext = gcm(key, nonce).encrypt(plaintext);
@@ -261,7 +309,34 @@ export const createEncryptedBackup = async (entries: OtpEntry[], password: strin
 };
 
 export const readBackupPreview = (rawBackup: string): BackupPreview => {
-  const parsed = JSON.parse(rawBackup) as unknown;
+  const sanitized = sanitizeBackupText(rawBackup);
+  if (!sanitized) {
+    throw new Error("EMPTY_BACKUP_FILE");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(sanitized);
+  } catch {
+    const lines = sanitized
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith("otpauth://"));
+
+    if (lines.length > 0) {
+      const entries = normalizeImportedEntries(lines);
+      if (entries.length > 0) {
+        return {
+          kind: "legacy",
+          version: 0,
+          entriesCount: entries.length,
+          requiresPassword: false,
+        };
+      }
+    }
+
+    throw new Error("INVALID_BACKUP_FILE");
+  }
 
   if (isBackupEnvelope(parsed)) {
     return {
@@ -299,7 +374,43 @@ export const importBackupFromString = async ({
   password?: string;
   mode: ImportMode;
 }): Promise<BackupImportResult> => {
-  const parsed = JSON.parse(rawBackup) as unknown;
+  const sanitized = sanitizeBackupText(rawBackup);
+  if (!sanitized) {
+    throw new Error("EMPTY_BACKUP_FILE");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(sanitized);
+  } catch {
+    const lines = sanitized
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith("otpauth://"));
+
+    if (lines.length > 0) {
+      const importedEntries = normalizeImportedEntries(lines);
+      if (importedEntries.length > 0) {
+        const mergeResult = mergeEntries(currentEntries, importedEntries, mode);
+
+        return {
+          nextEntries: mergeResult.nextEntries,
+          importedCount: importedEntries.length,
+          addedCount: mergeResult.addedCount,
+          updatedCount: mergeResult.updatedCount,
+          skippedCount: mergeResult.skippedCount,
+          preview: {
+            kind: "legacy",
+            version: 0,
+            entriesCount: importedEntries.length,
+            requiresPassword: false,
+          },
+        };
+      }
+    }
+
+    throw new Error("INVALID_BACKUP_FILE");
+  }
 
   if (isBackupEnvelope(parsed)) {
     if (!password?.trim()) {

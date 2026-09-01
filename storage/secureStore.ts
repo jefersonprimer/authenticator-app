@@ -4,12 +4,50 @@ import type { OtpEntry } from "@/types/otp";
 import { createOtpEntry, normalizeOtpEntries } from "@/utils/otp";
 
 const KEY = "accounts";
+const KEY_CHUNK_COUNT = "accounts_chunk_count";
+const KEY_CHUNK_PREFIX = "accounts_chunk_";
+const CHUNK_SIZE = 1500;
 const APP_LOCK_ENABLED_KEY = "app_lock_enabled";
 
 export type Account = OtpEntry;
 
 export const saveAccounts = async (accounts: Account[]) => {
-  await SecureStore.setItemAsync(KEY, JSON.stringify(normalizeOtpEntries(accounts)));
+  const normalized = normalizeOtpEntries(accounts);
+  const json = JSON.stringify(normalized);
+
+  const chunks: string[] = [];
+  for (let i = 0; i < json.length; i += CHUNK_SIZE) {
+    chunks.push(json.slice(i, i + CHUNK_SIZE));
+  }
+
+  const prevCountStr = await SecureStore.getItemAsync(KEY_CHUNK_COUNT);
+  const prevCount = prevCountStr ? parseInt(prevCountStr, 10) : 0;
+
+  for (let i = 0; i < chunks.length; i++) {
+    await SecureStore.setItemAsync(`${KEY_CHUNK_PREFIX}${i}`, chunks[i]);
+  }
+
+  if (prevCount > chunks.length) {
+    for (let i = chunks.length; i < prevCount; i++) {
+      try {
+        await SecureStore.deleteItemAsync(`${KEY_CHUNK_PREFIX}${i}`);
+      } catch {
+        // ignore deletion failure of unused chunk
+      }
+    }
+  }
+
+  await SecureStore.setItemAsync(KEY_CHUNK_COUNT, String(chunks.length));
+
+  if (chunks.length <= 1) {
+    await SecureStore.setItemAsync(KEY, json);
+  } else {
+    try {
+      await SecureStore.deleteItemAsync(KEY);
+    } catch {
+      // ignore
+    }
+  }
 };
 
 export const removeAccount = async (accountId: string) => {
@@ -38,21 +76,44 @@ export const updateAccount = async (
 };
 
 export const getAccounts = async (): Promise<Account[]> => {
-  const data = await SecureStore.getItemAsync(KEY);
-  if (!data) {
-    return [];
-  }
-
   try {
-    const parsed = JSON.parse(data);
-    const normalized = normalizeOtpEntries(parsed);
+    const chunkCountStr = await SecureStore.getItemAsync(KEY_CHUNK_COUNT);
+    const chunkCount = chunkCountStr ? parseInt(chunkCountStr, 10) : 0;
 
-    if (JSON.stringify(parsed) !== JSON.stringify(normalized)) {
-      await saveAccounts(normalized);
+    let rawJson: string | null = null;
+
+    if (chunkCount > 0) {
+      const parts: string[] = [];
+      for (let i = 0; i < chunkCount; i++) {
+        const part = await SecureStore.getItemAsync(`${KEY_CHUNK_PREFIX}${i}`);
+        if (part !== null) {
+          parts.push(part);
+        }
+      }
+      rawJson = parts.join("");
     }
+
+    if (!rawJson) {
+      rawJson = await SecureStore.getItemAsync(KEY);
+    }
+
+    if (!rawJson) {
+      return [];
+    }
+
+    const parsed = JSON.parse(rawJson);
+    const normalized = normalizeOtpEntries(parsed);
 
     return normalized;
   } catch {
+    try {
+      const fallbackJson = await SecureStore.getItemAsync(KEY);
+      if (fallbackJson) {
+        return normalizeOtpEntries(JSON.parse(fallbackJson));
+      }
+    } catch {
+      // ignore
+    }
     return [];
   }
 };
